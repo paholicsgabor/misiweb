@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title></title>
+</head>
+<style>
+    body {
+        background: linear-gradient(135deg, #f8ffae 0%, #43cea2 100%);
+        font-family: 'Comic Sans MS', 'Arial Rounded MT Bold', Arial, sans-serif;
+        padding: 40px;
+        margin: 0;
+        min-height: 100vh;
+    }
+
+    h1 {
+        color: #43cea2;
+        text-align: center;
+        font-size: 3em;
+        margin-bottom: 30px;
+        text-shadow: 1px 2px 8px #fff9;
+    }
+
+    #secret-links {
+        list-style: none;
+        padding: 0;
+        margin: 0 auto 30px auto;
+        max-width: 400px;
+    }
+
+    #secret-links li {
+        margin: 18px 0;
+        text-align: center;
+    }
+
+    #secret-links a {
+        display: inline-block;
+        background: #fff;
+        color: #43cea2;
+        font-size: 1.6em;
+        font-weight: bold;
+        padding: 20px 40px;
+        border-radius: 30px;
+        text-decoration: none;
+        box-shadow: 0 4px 16px #43cea233;
+        transition: background 0.3s, color 0.3s, transform 0.2s;
+    }
+
+    #secret-links a:hover {
+        background: #43cea2;
+        color: #fff;
+        transform: scale(1.07);
+    }
+
+    .error {
+        color: #ad1457;
+        background: #fff3;
+        padding: 20px;
+        border-radius: 20px;
+        text-align: center;
+        font-size: 1.4em;
+        margin-bottom: 30px;
+        max-width: 400px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .logout-btn {
+        display: block;
+        margin: 40px auto 0 auto;
+        background: #ad1457;
+        color: #fff;
+        font-size: 1.3em;
+        font-weight: bold;
+        padding: 15px 40px;
+        border-radius: 25px;
+        text-decoration: none;
+        box-shadow: 0 4px 16px #ad145733;
+        transition: background 0.3s, transform 0.2s;
+        border: none;
+        text-align: center;
+        width: max-content;
+    }
+
+    .logout-btn:hover {
+        background: #43cea2;
+        color: #fff;
+        transform: scale(1.07);
+    }
+</style>
+
+<body>
+    <ul id="secret-links"></ul>
+    <a href="/logout" class="logout-btn">Kijelentkezés</a>
+    <script>
+        window.onload = function () {
+            fetch('/user-permissions')
+                .then(response => response.json())
+                .then(data => {
+                    const secretLinksContainer = document.getElementById('secret-links');
+
+                    if (!data.permissions || data.permissions.length === 0) {
+                        document.getElementById('secret-links').style.display = 'none';
+                        return;
+                    }
+
+                    data.permissions.forEach(permission => {
+                        const li = document.createElement('li');
+                        const a = document.createElement('a');
+                        a.href = permission.url;
+                        a.textContent = permission.name;
+                        li.appendChild(a);
+                        secretLinksContainer.appendChild(li);
+                    });
+                })
+                .catch(error => {
+                    const secretLinksContainer = document.getElementById('secret-links');
+                    secretLinksContainer.innerHTML = "";
+                    const errorDiv = document.createElement('div');
+                    errorDiv.className = "error";
+                    errorDiv.textContent = 'Hiba történt a jogosultságok lekérésekor vagy nincs jogosultságod!';
+                    secretLinksContainer.parentNode.insertBefore(errorDiv, secretLinksContainer);
+                    console.error('Hiba történt a jogosultságok lekérésekor:', error);
+                });
+
+
+        }
+    </script>
+</body>
+
+</html>

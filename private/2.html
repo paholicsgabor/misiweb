@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="hu">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Játék választó</title>
+  <style>
+    body {
+      background: linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      font-family: 'Comic Sans MS', 'Arial Rounded MT Bold', Arial, sans-serif;
+      margin: 0;
+    }
+
+    h1 {
+      color: #7c53c7;
+      margin-top: 30px;
+      margin-bottom: 20px;
+      font-size: 2.5em;
+    }
+
+    #kereso {
+      font-size: 28px;
+      width: 90%;
+      max-width: 400px;
+      padding: 12px 20px;
+      border: 2px solid #7c53c7;
+      border-radius: 15px;
+      box-shadow: 0 2px 8px #7c53c766;
+      margin-bottom: 30px;
+      outline: none;
+      transition: border 0.3s;
+      display: block;
+    }
+
+    #kereso:focus {
+      border: 2.5px solid #ff7eb3;
+    }
+
+    .jatekok {
+      width: 100%;
+      max-width: 400px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .jatekgomb {
+      font-size: 1.4em;
+      color: #7c53c7;
+      background: #fff;
+      padding: 18px 36px;
+      border-radius: 25px;
+      text-decoration: none;
+      margin: 16px 0;
+      font-weight: bold;
+      box-shadow: 0 4px 16px #7c53c733;
+      transition: background 0.3s, color 0.3s, transform 0.2s;
+      display: block;
+      width: 90%;
+      text-align: center;
+      border: none;
+    }
+
+    .jatekgomb:hover {
+      background: #43cea2;
+      color: #fff;
+      transform: scale(1.06);
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Válassz játékot!</h1>
+  <input type="text" id="kereso" placeholder="Keresés a játékok között...">
+  <div class="jatekok">
+    <a href="private/3.html" class="jatekgomb">Amőba</a>
+    <a href="private/kigyo.html" class="jatekgomb">Kígyó</a>
+    <a href="private/4.html" class="jatekgomb">Ping Pong</a>
+    <a href="private/543.html" class="jatekgomb">Toronyépítő</a>
+    <a href="private/2048.html" class="jatekgomb">2048</a>
+    <a href="private/simon.html" class="jatekgomb">Simon</a>
+    <a href="private/drive.html" class="jatekgomb">Drive</a>
+    <a href="private/maze.html" class="jatekgomb">Labirintus</a>
+    <a href="/minicraft.html" class="jatekgomb">Minicraft</a>
+  </div>
+  <script>
+    document.getElementById("kereso").addEventListener("input", function () {
+      var szoveg = this.value.toLowerCase();
+      document.querySelectorAll('.jatekgomb').forEach(function (gomb) {
+        if (gomb.textContent.toLowerCase().includes(szoveg)) {
+          gomb.style.display = "";
+        } else {
+          gomb.style.display = "none";
+        }
+      });
+    });
+  </script>
+</body>
+
+</html>

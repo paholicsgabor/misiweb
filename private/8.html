@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="hu">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Chat</title>
+    <style>
+        body {
+            background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+            font-family: 'Comic Sans MS', Arial, sans-serif;
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 {
+            color: #7c53c7;
+            margin-top: 25px;
+        }
+
+        #chatbox {
+            width: 94vw;
+            max-width: 420px;
+            height: 60vh;
+            background: #fff;
+            border: 3px solid #7c53c7;
+            border-radius: 16px;
+            box-shadow: 0 8px 32px #7c53c733;
+            margin: 18px 0 12px 0;
+            padding: 18px 14px 12px 14px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .uzenet {
+            background: #fbc2eb;
+            color: #7c53c7;
+            padding: 8px 14px;
+            border-radius: 12px;
+            max-width: 70%;
+            align-self: flex-start;
+            margin-bottom: 2px;
+            word-break: break-word;
+            font-size: 1.1em;
+        }
+
+        .en {
+            background: #43cea2;
+            color: #fff;
+            align-self: flex-end;
+        }
+
+        #uzenetKuldo {
+            display: flex;
+            width: 94vw;
+            max-width: 420px;
+            gap: 8px;
+            margin-bottom: 18px;
+        }
+
+        #uzenet {
+            flex: 1;
+            font-size: 1.1em;
+            padding: 10px 14px;
+            border: 2px solid #7c53c7;
+            border-radius: 10px;
+            outline: none;
+        }
+
+        #kuldes {
+            background: #7c53c7;
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            padding: 10px 22px;
+            font-size: 1.1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.2s;
+        }
+
+        #kuldes:hover {
+            background: #43cea2;
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Chat</h1>
+    <div id="chatbox"></div>
+    <form id="uzenetKuldo" autocomplete="off">
+        <input type="text" id="uzenet" placeholder="Írj ide üzenetet..." maxlength="200" required>
+        <button type="submit" id="kuldes">Küldés</button>
+    </form>
+    <script>
+        const chatbox = document.getElementById('chatbox');
+        const uzenetInput = document.getElementById('uzenet');
+        const form = document.getElementById('uzenetKuldo');
+
+        // Helyi üzenetek tömbje
+        let uzenetek = [];
+
+        // Üzenet hozzáadása a chatboxhoz
+        function ujUzenet(szoveg, ki) {
+            const div = document.createElement('div');
+            div.className = 'uzenet' + (ki === 'en' ? ' en' : '');
+            div.textContent = szoveg;
+            chatbox.appendChild(div);
+            chatbox.scrollTop = chatbox.scrollHeight;
+        }
+
+        // Összes üzenet megjelenítése (pl. betöltéskor)
+        function osszesUzenetKirajzol() {
+            chatbox.innerHTML = '';
+            uzenetek.forEach(u => ujUzenet(u.szoveg, u.ki));
+        }
+
+        // Üzenetek mentése a localStorage-ba
+        function mentes() {
+            localStorage.setItem('chatUzenetek', JSON.stringify(uzenetek));
+        }
+
+        // Üzenetek betöltése a localStorage-ból
+        function betoltes() {
+            const tarolt = localStorage.getItem('chatUzenetek');
+            if (tarolt) {
+                uzenetek = JSON.parse(tarolt);
+                osszesUzenetKirajzol();
+            }
+        }
+
+        // Küldés esemény
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            const szoveg = uzenetInput.value.trim();
+            if (szoveg.length === 0) return;
+            uzenetek.push({ szoveg, ki: 'en' });
+            ujUzenet(szoveg, 'en');
+            mentes();
+            uzenetInput.value = '';
+        });
+
+        // Enterre is küldjön
+        uzenetInput.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                form.dispatchEvent(new Event('submit'));
+            }
+        });
+
+        // Betöltés induláskor
+        betoltes();
+    </script>
+</body>
+
+</html>

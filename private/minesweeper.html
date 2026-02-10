@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="hu">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Aknakereső</title>
+    <style>
+        body {
+            background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+            font-family: 'Comic Sans MS', Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            min-height: 100vh;
+        }
+
+        h1 {
+            color: #7c53c7;
+            margin-top: 30px;
+        }
+
+        #jatekter {
+            display: grid;
+            grid-template-columns: repeat(8, 40px);
+            grid-gap: 4px;
+            margin-top: 18px;
+        }
+
+        .mezo {
+            width: 40px;
+            height: 40px;
+            background: #fff;
+            border: 2px solid #7c53c7;
+            border-radius: 8px;
+            font-size: 1.3em;
+            color: #7c53c7;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            user-select: none;
+            transition: background 0.2s, color 0.2s;
+        }
+
+        .mezo.felfedve {
+            background: #e0f7fa;
+            color: #222;
+            cursor: default;
+        }
+
+        .mezo.zaszlo {
+            background: #ff7eb3;
+            color: #fff;
+        }
+
+        #info {
+            margin-top: 16px;
+            font-size: 1.2em;
+            color: #43cea2;
+            font-weight: bold;
+        }
+
+        #ujra {
+            margin-top: 18px;
+            padding: 10px 28px;
+            font-size: 1.1em;
+            border-radius: 10px;
+            border: none;
+            background: #7c53c7;
+            color: #fff;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.2s;
+        }
+
+        #ujra:hover {
+            background: #43cea2;
+            transform: scale(1.07);
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Aknakereső</h1>
+    <div id="info"></div>
+    <div id="jatekter"></div>
+    <button id="ujra" onclick="indit()">Új játék</button>
+    <script>
+        const sorok = 8, oszlopok = 8, aknak = 10;
+        let tabla = [], aknahelyek = [], felfedve = [], zaszlok = [], vege = false;
+
+        function indit() {
+            tabla = [];
+            aknahelyek = [];
+            felfedve = [];
+            zaszlok = [];
+            vege = false;
+            document.getElementById('info').textContent = "";
+            // Üres tábla
+            for (let i = 0; i < sorok; i++) {
+                tabla[i] = [];
+                felfedve[i] = [];
+                zaszlok[i] = [];
+                for (let j = 0; j < oszlopok; j++) {
+                    tabla[i][j] = 0;
+                    felfedve[i][j] = false;
+                    zaszlok[i][j] = false;
+                }
+            }
+            // Aknák elhelyezése
+            let aknakSzama = 0;
+            while (aknakSzama < aknak) {
+                let x = Math.floor(Math.random() * sorok);
+                let y = Math.floor(Math.random() * oszlopok);
+                if (tabla[x][y] !== 'A') {
+                    tabla[x][y] = 'A';
+                    aknakSzama++;
+                }
+            }
+            // Számok kiszámítása
+            for (let i = 0; i < sorok; i++) {
+                for (let j = 0; j < oszlopok; j++) {
+                    if (tabla[i][j] === 'A') continue;
+                    let db = 0;
+                    for (let dx = -1; dx <= 1; dx++) {
+                        for (let dy = -1; dy <= 1; dy++) {
+                            let ni = i + dx, nj = j + dy;
+                            if (ni >= 0 && ni < sorok && nj >= 0 && nj < oszlopok) {
+                                if (tabla[ni][nj] === 'A') db++;
+                            }
+                        }
+                    }
+                    tabla[i][j] = db;
+                }
+            }
+            rajzol();
+        }
+
+        function rajzol() {
+            const jatek = document.getElementById('jatekter');
+            jatek.innerHTML = '';
+            jatek.style.gridTemplateColumns = `repeat(${oszlopok}, 40px)`;
+            for (let i = 0; i < sorok; i++) {
+                for (let j = 0; j < oszlopok; j++) {
+                    const div = document.createElement('div');
+                    div.className = 'mezo';
+                    if (felfedve[i][j]) div.classList.add('felfedve');
+                    if (zaszlok[i][j]) div.classList.add('zaszlo');
+                    if (felfedve[i][j]) {
+                        if (tabla[i][j] === 'A') {
+                            div.textContent = "💣";
+                        } else if (tabla[i][j] > 0) {
+                            div.textContent = tabla[i][j];
+                        }
+                    } else if (zaszlok[i][j]) {
+                        div.textContent = "🚩";
+                    }
+                    div.onclick = (e) => mezoKatt(i, j);
+                    div.oncontextmenu = (e) => { e.preventDefault(); zaszloKatt(i, j); };
+                    jatek.appendChild(div);
+                }
+            }
+        }
+
+        function mezoKatt(i, j) {
+            if (vege || felfedve[i][j] || zaszlok[i][j]) return;
+            felfed(i, j);
+            rajzol();
+            ellenorzes();
+        }
+
+        function zaszloKatt(i, j) {
+            if (vege || felfedve[i][j]) return;
+            zaszlok[i][j] = !zaszlok[i][j];
+            rajzol();
+        }
+
+        function felfed(i, j) {
+            if (felfedve[i][j] || zaszlok[i][j]) return;
+            felfedve[i][j] = true;
+            if (tabla[i][j] === 'A') {
+                vege = true;
+                document.getElementById('info').textContent = "Vesztettél! 💣";
+                // Minden akna felfedése
+                for (let x = 0; x < sorok; x++)
+                    for (let y = 0; y < oszlopok; y++)
+                        if (tabla[x][y] === 'A') felfedve[x][y] = true;
+                setTimeout(rajzol, 200);
+                return;
+            }
+            if (tabla[i][j] === 0) {
+                // Szomszédos üres mezők felfedése (rekurzívan)
+                for (let dx = -1; dx <= 1; dx++) {
+                    for (let dy = -1; dy <= 1; dy++) {
+                        let ni = i + dx, nj = j + dy;
+                        if (ni >= 0 && ni < sorok && nj >= 0 && nj < oszlopok) {
+                            if (!felfedve[ni][nj]) felfed(ni, nj);
+                        }
+                    }
+                }
+            }
+        }
+
+        function ellenorzes() {
+            let nyert = true;
+            for (let i = 0; i < sorok; i++)
+                for (let j = 0; j < oszlopok; j++)
+                    if (tabla[i][j] !== 'A' && !felfedve[i][j]) nyert = false;
+            if (nyert && !vege) {
+                vege = true;
+                document.getElementById('info').textContent = "Gratulálok, nyertél! 🎉";
+            }
+        }
+
+        indit();
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="hu">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Célvadász</title>
+    <style>
+        :root {
+            --bg1: #a18cd1;
+            /* lila */
+            --bg2: #fbc2eb;
+            /* rózsaszín */
+            --brand: #7c53c7;
+            --accent: #43cea2;
+            --white: #ffffff;
+            --shadow: 0 8px 32px #7c53c733;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background: linear-gradient(135deg, var(--bg1) 0%, var(--bg2) 100%);
+            font-family: 'Comic Sans MS', 'Arial Rounded MT Bold', Arial, sans-serif;
+            color: var(--brand);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        header {
+            width: 100%;
+            max-width: 900px;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        h1 {
+            margin: 10px 0 0 0;
+            font-size: 2.2rem;
+            color: var(--brand);
+            text-shadow: 0 2px 0 #ffffff88;
+        }
+
+        .controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            background: var(--brand);
+            color: var(--white);
+            border: none;
+            border-radius: 12px;
+            padding: 10px 16px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: var(--shadow);
+            transition: background 0.2s, transform 0.15s;
+        }
+
+        button:hover {
+            background: var(--accent);
+            transform: translateY(-1px);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .stat {
+            background: #ffffffcc;
+            border: 2px solid var(--brand);
+            color: var(--brand);
+            border-radius: 12px;
+            padding: 8px 12px;
+            font-weight: bold;
+            box-shadow: var(--shadow);
+        }
+
+        .board-wrap {
+            width: 94vw;
+            max-width: 900px;
+            flex: 1;
+            display: grid;
+            place-items: center;
+            padding: 10px 20px 24px;
+        }
+
+        .board {
+            position: relative;
+            width: min(90vw, 800px);
+            height: min(60vh, 520px);
+            min-height: 360px;
+            background: #fff;
+            border: 3px solid var(--brand);
+            border-radius: 18px;
+            box-shadow: var(--shadow);
+            overflow: hidden;
+        }
+
+        .target {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%, #ffdeeb, #ff7eb3 60%, #ff3f8e 100%);
+            border: 3px solid #7c53c7;
+            box-shadow: 0 6px 16px #7c53c755;
+            display: grid;
+            place-items: center;
+            user-select: none;
+            cursor: pointer;
+            transform: translate(-50%, -50%);
+        }
+
+        .target span {
+            color: white;
+            font-weight: 900;
+            text-shadow: 0 1px 2px #00000055;
+            pointer-events: none;
+        }
+
+        .toast {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            background: #00000088;
+            color: #fff;
+            padding: 8px 12px;
+            border-radius: 10px;
+            font-weight: bold;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s, transform 0.2s;
+        }
+
+        .footer {
+            padding: 10px 16px 22px;
+            color: #5b3fa2;
+            font-size: 0.95rem;
+            text-align: center;
+        }
+
+        .hint {
+            background: #ffffffcc;
+            border: 2px dashed var(--brand);
+            border-radius: 14px;
+            padding: 10px 14px;
+            display: inline-block;
+            box-shadow: var(--shadow);
+        }
+
+        @media (max-width: 520px) {
+            .board {
+                min-height: 300px;
+            }
+
+            .target {
+                width: 54px;
+                height: 54px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1>Célvadász</h1>
+        <div class="controls">
+            <span class="stat">Idő: <span id="time">30</span>s</span>
+            <span class="stat">Pont: <span id="score">0</span></span>
+            <button id="startBtn">Start / Újrakezd</button>
+            <button id="backBtn" title="Vissza a játék választóhoz">Vissza</button>
+        </div>
+    </header>
+
+    <div class="board-wrap">
+        <div class="board" id="board">
+            <div class="target" id="target" style="left: 50%; top: 50%; display: none">
+                <span>+1</span>
+            </div>
+            <div class="toast" id="toast">Szép lövés!</div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <span class="hint">Tipp: kattints a célpontra mielőtt elugrik! A játék 30 másodpercig tart.</span>
+    </div>
+
+    <script>
+        const board = document.getElementById('board');
+        const target = document.getElementById('target');
+        const timeEl = document.getElementById('time');
+        const scoreEl = document.getElementById('score');
+        const startBtn = document.getElementById('startBtn');
+        const backBtn = document.getElementById('backBtn');
+        const toast = document.getElementById('toast');
+
+        let time = 30;
+        let score = 0;
+        let running = false;
+        let timerId = null;
+        let moveId = null;
+        let moveInterval = 900; // ms, később gyorsul
+
+        function rand(min, max) {
+            return Math.random() * (max - min) + min;
+        }
+
+        function placeTargetRandom() {
+            const rect = board.getBoundingClientRect();
+            const size = target.offsetWidth; // 60 px
+            // A board belsején belül marad a cél
+            const x = rand(size, rect.width - size);
+            const y = rand(size, rect.height - size);
+            target.style.left = x + 'px';
+            target.style.top = y + 'px';
+        }
+
+        function showToast(text) {
+            toast.textContent = text;
+            toast.style.opacity = '1';
+            toast.style.transform = 'translate(-50%, -50%) scale(1.05)';
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translate(-50%, -50%) scale(1)';
+            }, 350);
+        }
+
+        function startGame() {
+            // reset
+            time = 30;
+            score = 0;
+            moveInterval = 900;
+            timeEl.textContent = time;
+            scoreEl.textContent = score;
+
+            running = true;
+            target.style.display = 'grid';
+            placeTargetRandom();
+
+            // időzítő
+            clearInterval(timerId);
+            timerId = setInterval(() => {
+                time -= 1;
+                timeEl.textContent = time;
+                if (time <= 0) {
+                    endGame();
+                }
+            }, 1000);
+
+            // mozgás
+            clearInterval(moveId);
+            moveId = setInterval(() => {
+                placeTargetRandom();
+            }, moveInterval);
+        }
+
+        function endGame() {
+            running = false;
+            clearInterval(timerId);
+            clearInterval(moveId);
+            target.style.display = 'none';
+            showToast('Vége! Pontszám: ' + score);
+        }
+
+        target.addEventListener('click', (e) => {
+            if (!running) return;
+            e.stopPropagation();
+            score += 1;
+            scoreEl.textContent = score;
+            showToast('+1');
+
+            // picit gyorsuljon a játék, de ne legyen túl durva
+            moveInterval = Math.max(450, moveInterval - 20);
+            clearInterval(moveId);
+            moveId = setInterval(placeTargetRandom, moveInterval);
+
+            // és azonnal is ugorjon egyet
+            placeTargetRandom();
+        });
+
+        // Ha mellékattint, vonjunk le 1 pontot (de ne menjen negatívba)
+        board.addEventListener('click', () => {
+            if (!running) return;
+            if (score > 0) {
+                score -= 1;
+                scoreEl.textContent = score;
+                showToast('-1 :(');
+            }
+        });
+
+        startBtn.addEventListener('click', () => {
+            startGame();
+        });
+
+        backBtn.addEventListener('click', () => {
+            // vissza a játék választóhoz
+            window.location.href = '/2';
+        });
+
+        // Ha átméretezik a képernyőt, a cél maradjon bent
+        window.addEventListener('resize', () => {
+            if (!running) return;
+            placeTargetRandom();
+        });
+    </script>
+</body>
+
+</html>

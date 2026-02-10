@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="hu">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Toronyépítő</title>
+    <style>
+        body {
+            background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+            font-family: 'Comic Sans MS', Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            min-height: 100vh;
+        }
+
+        h1 {
+            color: #7c53c7;
+            margin-top: 30px;
+        }
+
+        #pont {
+            font-size: 1.3em;
+            color: #43cea2;
+            margin-bottom: 12px;
+            font-weight: bold;
+        }
+
+        #jatek {
+            background: #fff;
+            border: 3px solid #7c53c7;
+            border-radius: 16px;
+            box-shadow: 0 8px 32px #7c53c733;
+            margin-bottom: 18px;
+        }
+
+        #ujra {
+            margin-top: 10px;
+            padding: 10px 28px;
+            font-size: 1.1em;
+            border-radius: 10px;
+            border: none;
+            background: #7c53c7;
+            color: #fff;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.2s;
+        }
+
+        #ujra:hover {
+            background: #43cea2;
+            transform: scale(1.07);
+        }
+
+        #vege {
+            color: #ad1457;
+            font-size: 1.6em;
+            font-weight: bold;
+            margin: 10px 0 18px 0;
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Toronyépítő</h1>
+    <div id="pont">Emeletek: 0</div>
+    <canvas id="jatek" width="320" height="480"></canvas>
+    <div id="vege">Vesztettél!</div>
+    <button id="ujra" onclick="indit()">Újraindítás</button>
+    <script>
+        const canvas = document.getElementById('jatek');
+        const ctx = canvas.getContext('2d');
+        let torony = [];
+        let mozgo = null;
+        let irany = 2;
+        let pont = 0;
+        let jatekVege = false;
+        let anim;
+
+        function indit() {
+            torony = [{ x: 60, w: 200, y: 440, szin: "#43cea2" }];
+            mozgo = { x: 0, w: 200, y: 410, szin: "#ff7eb3" };
+            irany = 2;
+            pont = 0;
+            jatekVege = false;
+            document.getElementById('pont').textContent = "Emeletek: 0";
+            document.getElementById('vege').style.display = "none";
+            cancelAnimationFrame(anim);
+            rajzol();
+            anim = requestAnimationFrame(leptet);
+        }
+
+        function leptet() {
+            if (jatekVege) return;
+            mozgo.x += irany;
+            if (mozgo.x <= 0 || mozgo.x + mozgo.w >= canvas.width) irany *= -1;
+            rajzol();
+            anim = requestAnimationFrame(leptet);
+        }
+
+        function ejtes() {
+            if (jatekVege) return;
+            let felso = torony[torony.length - 1];
+            let bal = Math.max(mozgo.x, felso.x);
+            let jobb = Math.min(mozgo.x + mozgo.w, felso.x + felso.w);
+            let ujSzelesseg = jobb - bal;
+            if (ujSzelesseg <= 0) {
+                vege();
+                return;
+            }
+            torony.push({
+                x: bal,
+                w: ujSzelesseg,
+                y: felso.y - 30,
+                szin: szinValaszt()
+            });
+            pont++;
+            document.getElementById('pont').textContent = "Emeletek: " + pont;
+            if (torony[torony.length - 1].y < 0) {
+                vege();
+                return;
+            }
+            mozgo = {
+                x: 0,
+                w: ujSzelesseg,
+                y: torony[torony.length - 1].y - 30,
+                szin: szinValaszt()
+            };
+            irany = 2 + Math.floor(pont / 5); // egyre gyorsabb
+        }
+
+        function rajzol() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            // Torony
+            for (let i = 0; i < torony.length; i++) {
+                ctx.fillStyle = torony[i].szin;
+                ctx.fillRect(torony[i].x, torony[i].y, torony[i].w, 30);
+            }
+            // Mozgó emelet
+            if (mozgo) {
+                ctx.fillStyle = mozgo.szin;
+                ctx.fillRect(mozgo.x, mozgo.y, mozgo.w, 30);
+            }
+        }
+
+        function vege() {
+            jatekVege = true;
+            document.getElementById('vege').style.display = "block";
+        }
+
+        function szinValaszt() {
+            // Véletlen szín a szép színpalettából
+            const szinek = ["#ff7eb3", "#43cea2", "#7c53c7", "#fbc2eb", "#a8edea"];
+            return szinek[Math.floor(Math.random() * szinek.length)];
+        }
+
+        // Kattintás vagy szóköz lenyomás = ejtés
+        canvas.onclick = ejtes;
+        document.body.onkeydown = function (e) {
+            if (e.code === "Space" || e.key === " " || e.key === "Spacebar") {
+                ejtes();
+            }
+        };
+
+        indit();
+    </script>
+</body>
+
+</html>

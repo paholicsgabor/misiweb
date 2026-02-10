@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="hu">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Pingpong</title>
+    <style>
+        body {
+            background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-family: 'Comic Sans MS', Arial, sans-serif;
+            margin: 0;
+            min-height: 100vh;
+        }
+
+        h1 {
+            color: #7c53c7;
+            margin-top: 20px;
+        }
+
+        #pont {
+            font-size: 1.5em;
+            color: #43cea2;
+            margin-bottom: 10px;
+        }
+
+        canvas {
+            background: #fff;
+            border: 4px solid #7c53c7;
+            border-radius: 18px;
+            box-shadow: 0 8px 32px #7c53c733;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Pingpong</h1>
+    <div id="pont">Játékos: 0 &nbsp;|&nbsp; Gép: 0</div>
+    <canvas id="canvas" width="640" height="480"></canvas>
+    <script>
+        const canvas = document.getElementById("canvas");
+        const ctx = canvas.getContext("2d");
+
+        // Játékos ütő
+        const utoSzelesseg = 12, utoMagassag = 80;
+        let jatekos = { x: 20, y: 200, seb: 0 };
+        // Gép ütő
+        let gep = { x: canvas.width - 32, y: 200, seb: 0 };
+        // Labda
+        let labda = { x: canvas.width / 2, y: canvas.height / 2, r: 10, dx: 3, dy: 1.7 };
+
+        let pontJatekos = 0, pontGep = 0;
+        let gepHiba = 0; // Ez a változó okozza a gép hibázását
+
+        function rajzol() {
+            // Háttér
+            ctx.fillStyle = "#fff";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Középvonal
+            ctx.strokeStyle = "#7c53c7";
+            ctx.setLineDash([10, 10]);
+            ctx.beginPath();
+            ctx.moveTo(canvas.width / 2, 0);
+            ctx.lineTo(canvas.width / 2, canvas.height);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Ütők
+            ctx.fillStyle = "#43cea2";
+            ctx.fillRect(jatekos.x, jatekos.y, utoSzelesseg, utoMagassag);
+            ctx.fillStyle = "#ff7eb3";
+            ctx.fillRect(gep.x, gep.y, utoSzelesseg, utoMagassag);
+
+            // Labda
+            ctx.beginPath();
+            ctx.arc(labda.x, labda.y, labda.r, 0, 2 * Math.PI);
+            ctx.fillStyle = "#7c53c7";
+            ctx.fill();
+
+            // Pontszám
+            document.getElementById("pont").textContent = `Játékos: ${pontJatekos}  |  Gép: ${pontGep}`;
+        }
+
+        function frissit() {
+            // Játékos ütő mozgatás
+            jatekos.y += jatekos.seb;
+            if (jatekos.y < 0) jatekos.y = 0;
+            if (jatekos.y + utoMagassag > canvas.height) jatekos.y = canvas.height - utoMagassag;
+
+            // Gép ütő (AI) - követi a labdát, de hibázik néha
+            let celY = labda.y + gepHiba;
+            if (celY < gep.y + utoMagassag / 2) gep.seb = -4;
+            else if (celY > gep.y + utoMagassag / 2) gep.seb = 4;
+            else gep.seb = 0;
+            gep.y += gep.seb;
+            if (gep.y < 0) gep.y = 0;
+            if (gep.y + utoMagassag > canvas.height) gep.y = canvas.height - utoMagassag;
+
+            // Géphiba néha változik
+            if (Math.random() < 0.02) {
+                gepHiba = (Math.random() - 0.5) * 120; // -60 és +60 pixel között
+            }
+
+            // Labda mozgatás
+            labda.x += labda.dx;
+            labda.y += labda.dy;
+
+            // Felső/alsó fal ütközés
+            if (labda.y - labda.r < 0 || labda.y + labda.r > canvas.height) {
+                labda.dy *= -1;
+            }
+
+            // Játékos ütő ütközés
+            if (
+                labda.x - labda.r < jatekos.x + utoSzelesseg &&
+                labda.y > jatekos.y &&
+                labda.y < jatekos.y + utoMagassag
+            ) {
+                labda.dx *= -1.1; // kicsit gyorsul
+                labda.x = jatekos.x + utoSzelesseg + labda.r;
+            }
+
+            // Gép ütő ütközés
+            if (
+                labda.x + labda.r > gep.x &&
+                labda.y > gep.y &&
+                labda.y < gep.y + utoMagassag
+            ) {
+                labda.dx *= -1.1; // kicsit gyorsul
+                labda.x = gep.x - labda.r;
+            }
+
+            // Pontszerzés
+            if (labda.x - labda.r < 0) {
+                pontGep++;
+                ujraindit();
+            }
+            if (labda.x + labda.r > canvas.width) {
+                pontJatekos++;
+                ujraindit();
+            }
+        }
+
+        function ujraindit() {
+            labda.x = canvas.width / 2;
+            labda.y = canvas.height / 2;
+            labda.dx = (Math.random() > 0.5 ? 3 : -3);
+            labda.dy = (Math.random() > 0.5 ? 1.7 : -1.7);
+            jatekos.y = canvas.height / 2 - utoMagassag / 2;
+            gep.y = canvas.height / 2 - utoMagassag / 2;
+        }
+
+        // Billentyűk figyelése
+        document.addEventListener("keydown", function (e) {
+            if (e.key === "ArrowUp" || e.key === "w" || e.key === "W") jatekos.seb = -6;
+            if (e.key === "ArrowDown" || e.key === "s" || e.key === "S") jatekos.seb = 6;
+        });
+        document.addEventListener("keyup", function (e) {
+            if (
+                e.key === "ArrowUp" || e.key === "w" || e.key === "W" ||
+                e.key === "ArrowDown" || e.key === "s" || e.key === "S"
+            ) jatekos.seb = 0;
+        });
+
+        // Játék indítása
+        ujraindit();
+        setInterval(function () {
+            frissit();
+            rajzol();
+        }, 1000 / 60); // 60 FPS
+    </script>
+</body>
+
+</html>

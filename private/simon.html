@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="hu">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Szín felismerő (Simon says)</title>
+    <style>
+        body {
+            background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+            font-family: 'Comic Sans MS', Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            min-height: 100vh;
+        }
+
+        h1 {
+            color: #7c53c7;
+            margin-top: 30px;
+        }
+
+        #info {
+            font-size: 1.3em;
+            color: #43cea2;
+            margin: 12px 0 10px 0;
+            font-weight: bold;
+        }
+
+        #gombok {
+            display: grid;
+            grid-template-columns: repeat(2, 100px);
+            grid-template-rows: repeat(2, 100px);
+            gap: 20px;
+            margin: 30px 0 18px 0;
+        }
+
+        .gomb {
+            width: 100px;
+            height: 100px;
+            border-radius: 24px;
+            border: 4px solid #fff;
+            box-shadow: 0 4px 16px #7c53c733;
+            cursor: pointer;
+            transition: filter 0.1s, transform 0.1s;
+            font-size: 1.3em;
+        }
+
+        .zold {
+            background: #43cea2;
+        }
+
+        .piros {
+            background: #ff7eb3;
+        }
+
+        .sarga {
+            background: #fff176;
+        }
+
+        .kek {
+            background: #7c53c7;
+            color: #fff;
+        }
+
+        .aktiv {
+            filter: brightness(1.8) drop-shadow(0 0 8px #fff);
+            transform: scale(1.08);
+        }
+
+        #ujra {
+            margin-top: 10px;
+            padding: 10px 28px;
+            font-size: 1.1em;
+            border-radius: 10px;
+            border: none;
+            background: #7c53c7;
+            color: #fff;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.2s;
+        }
+
+        #ujra:hover {
+            background: #43cea2;
+            transform: scale(1.07);
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Szín felismerő</h1>
+    <div id="info">Figyeld a színeket!</div>
+    <div id="gombok">
+        <button class="gomb zold" id="g0"></button>
+        <button class="gomb piros" id="g1"></button>
+        <button class="gomb sarga" id="g2"></button>
+        <button class="gomb kek" id="g3"></button>
+    </div>
+    <button id="ujra" onclick="indit()">Új játék</button>
+    <script>
+        const szinek = ["zold", "piros", "sarga", "kek"];
+        const hangok = [
+            new Audio("https://cdn.pixabay.com/audio/2022/03/15/audio_115b9c8b1c.mp3"), // zöld
+            new Audio("https://cdn.pixabay.com/audio/2022/03/15/audio_115b9c8b1c.mp3"), // piros
+            new Audio("https://cdn.pixabay.com/audio/2022/03/15/audio_115b9c8b1c.mp3"), // sárga
+            new Audio("https://cdn.pixabay.com/audio/2022/03/15/audio_115b9c8b1c.mp3")  // kék
+        ];
+        let sorozat = [];
+        let lepes = 0;
+        let varInput = false;
+        let rekord = 0;
+
+        function indit() {
+            sorozat = [];
+            lepes = 0;
+            rekord = Math.max(rekord, sorozat.length - 1);
+            document.getElementById('info').textContent = "Figyeld a színeket!";
+            kovetkezo();
+        }
+
+        function kovetkezo() {
+            varInput = false;
+            sorozat.push(Math.floor(Math.random() * 4));
+            lepes = 0;
+            setTimeout(() => jatszdLe(0), 700);
+        }
+
+        function jatszdLe(idx) {
+            if (idx >= sorozat.length) {
+                varInput = true;
+                document.getElementById('info').textContent = "Te jössz! (" + sorozat.length + " szín)";
+                return;
+            }
+            const gomb = document.getElementById('g' + sorozat[idx]);
+            gomb.classList.add('aktiv');
+            hangok[sorozat[idx]].currentTime = 0;
+            hangok[sorozat[idx]].play();
+            setTimeout(() => {
+                gomb.classList.remove('aktiv');
+                setTimeout(() => jatszdLe(idx + 1), 300);
+            }, 500);
+        }
+
+        for (let i = 0; i < 4; i++) {
+            document.getElementById('g' + i).onclick = function () {
+                if (!varInput) return;
+                this.classList.add('aktiv');
+                hangok[i].currentTime = 0;
+                hangok[i].play();
+                setTimeout(() => this.classList.remove('aktiv'), 200);
+                if (i === sorozat[lepes]) {
+                    lepes++;
+                    if (lepes === sorozat.length) {
+                        document.getElementById('info').textContent = "Ügyes! Jön a következő!";
+                        setTimeout(kovetkezo, 900);
+                    }
+                } else {
+                    document.getElementById('info').textContent = "Vége! Elért szint: " + (sorozat.length - 1);
+                    rekord = Math.max(rekord, sorozat.length - 1);
+                    varInput = false;
+                }
+            }
+        }
+
+        indit();
+    </script>
+</body>
+
+</html>

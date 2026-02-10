@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="hu">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Labirintus</title>
+    <style>
+        body {
+            background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+            font-family: 'Comic Sans MS', Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            min-height: 100vh;
+        }
+
+        h1 {
+            color: #7c53c7;
+            margin-top: 30px;
+        }
+
+        #info {
+            font-size: 1.3em;
+            color: #43cea2;
+            margin: 10px 0 10px 0;
+            font-weight: bold;
+        }
+
+        #jatek {
+            background: #fff;
+            border: 3px solid #7c53c7;
+            border-radius: 16px;
+            box-shadow: 0 8px 32px #7c53c733;
+            margin-bottom: 18px;
+        }
+
+        #ujra {
+            margin-top: 10px;
+            padding: 10px 28px;
+            font-size: 1.1em;
+            border-radius: 10px;
+            border: none;
+            background: #7c53c7;
+            color: #fff;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.2s;
+        }
+
+        #ujra:hover {
+            background: #43cea2;
+            transform: scale(1.07);
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Labirintus</h1>
+    <div id="info">Juss el a célig a nyilakkal!</div>
+    <canvas id="jatek" width="320" height="320"></canvas>
+    <button id="ujra" onclick="indit()">Új labirintus</button>
+    <script>
+        const canvas = document.getElementById('jatek');
+        const ctx = canvas.getContext('2d');
+        const n = 10; // pálya méret (10x10)
+        const cella = 32;
+        let palya = [];
+        let jatekos = { x: 0, y: 0 };
+        let cel = { x: n - 1, y: n - 1 };
+        let vege = false;
+
+        // Egyszerű labirintus generátor (DFS)
+        function labirintusGeneralas() {
+            // 0: fal, 1: út
+            palya = Array.from({ length: n }, () => Array(n).fill(0));
+            function dfs(x, y) {
+                palya[x][y] = 1;
+                const iranyok = [
+                    [0, 1], [1, 0], [0, -1], [-1, 0]
+                ].sort(() => Math.random() - 0.5);
+                for (const [dx, dy] of iranyok) {
+                    const nx = x + dx * 2, ny = y + dy * 2;
+                    if (nx >= 0 && nx < n && ny >= 0 && ny < n && palya[nx][ny] === 0) {
+                        palya[x + dx][y + dy] = 1;
+                        dfs(nx, ny);
+                    }
+                }
+            }
+            dfs(0, 0);
+            // Biztos út a célhoz: minden mezőt a főátlón átjárhatóvá teszünk
+            for (let i = 0; i < n; i++) {
+                palya[i][i] = 1;
+                if (i + 1 < n) palya[i][i + 1] = 1;
+                if (i + 1 < n) palya[i + 1][i] = 1;
+            }
+            palya[0][0] = 1;
+            palya[n - 1][n - 1] = 1;
+        }
+
+        function indit() {
+            labirintusGeneralas();
+            jatekos = { x: 0, y: 0 };
+            vege = false;
+            document.getElementById('info').textContent = "Juss el a célig a nyilakkal!";
+            rajzol();
+        }
+
+        function rajzol() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            // Pálya
+            for (let i = 0; i < n; i++) {
+                for (let j = 0; j < n; j++) {
+                    if (palya[i][j] === 0) {
+                        ctx.fillStyle = "#7c53c7";
+                        ctx.fillRect(j * cella, i * cella, cella, cella);
+                    }
+                }
+            }
+            // Cél
+            ctx.fillStyle = "#43cea2";
+            ctx.fillRect(cel.y * cella + 4, cel.x * cella + 4, cella - 8, cella - 8);
+            // Játékos
+            ctx.fillStyle = "#ff7eb3";
+            ctx.beginPath();
+            ctx.arc(jatekos.y * cella + cella / 2, jatekos.x * cella + cella / 2, cella / 2 - 4, 0, 2 * Math.PI);
+            ctx.fill();
+        }
+
+        document.body.onkeydown = function (e) {
+            if (vege) return;
+            let dx = 0, dy = 0;
+            if (e.key === "ArrowUp") dx = -1;
+            if (e.key === "ArrowDown") dx = 1;
+            if (e.key === "ArrowLeft") dy = -1;
+            if (e.key === "ArrowRight") dy = 1;
+            const nx = jatekos.x + dx, ny = jatekos.y + dy;
+            if (nx >= 0 && nx < n && ny >= 0 && ny < n && palya[nx][ny] === 1) {
+                jatekos.x = nx;
+                jatekos.y = ny;
+                rajzol();
+                if (jatekos.x === cel.x && jatekos.y === cel.y) {
+                    document.getElementById('info').textContent = "Gratulálok, kijutottál! 🎉";
+                    vege = true;
+                }
+            }
+        };
+
+        indit();
+    </script>
+</body>
+
+</html>

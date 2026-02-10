@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="hu">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Vezetős játék</title>
+    <style>
+        body {
+            background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+            font-family: 'Comic Sans MS', Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            min-height: 100vh;
+        }
+
+        h1 {
+            color: #7c53c7;
+            margin-top: 30px;
+        }
+
+        #pont {
+            font-size: 1.3em;
+            color: #43cea2;
+            margin-bottom: 12px;
+            font-weight: bold;
+        }
+
+        #jatek {
+            background: #fff;
+            border: 3px solid #7c53c7;
+            border-radius: 16px;
+            box-shadow: 0 8px 32px #7c53c733;
+            margin-bottom: 18px;
+            margin-top: 10px;
+            display: block;
+        }
+
+        #vege {
+            color: #ad1457;
+            font-size: 1.6em;
+            font-weight: bold;
+            margin: 10px 0 18px 0;
+            display: none;
+        }
+
+        #ujra {
+            margin-top: 10px;
+            padding: 10px 28px;
+            font-size: 1.1em;
+            border-radius: 10px;
+            border: none;
+            background: #7c53c7;
+            color: #fff;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.2s;
+        }
+
+        #ujra:hover {
+            background: #43cea2;
+            transform: scale(1.07);
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Vezetős játék</h1>
+    <div id="pont">Pontszám: 0</div>
+    <div id="vege">Vesztettél!</div>
+    <canvas id="jatek" width="320" height="480"></canvas>
+    <button id="ujra" onclick="indit()">Újraindítás</button>
+    <script>
+        const canvas = document.getElementById('jatek');
+        const ctx = canvas.getContext('2d');
+        let auto, akadalyok, pont, vege, sebesseg, anim;
+
+        function indit() {
+            auto = { x: 140, y: 400, w: 40, h: 60 };
+            akadalyok = [];
+            pont = 0;
+            vege = false;
+            sebesseg = 2;
+            document.getElementById('pont').textContent = "Pontszám: 0";
+            document.getElementById('vege').style.display = "none";
+            cancelAnimationFrame(anim);
+            anim = requestAnimationFrame(jatekLoop);
+        }
+
+        function jatekLoop() {
+            if (vege) return;
+            // Akadályok mozgatása
+            for (let akadaly of akadalyok) akadaly.y += sebesseg;
+            // Új akadály hozzáadása
+            if (Math.random() < 0.02 + pont / 2000) {
+                let w = 40 + Math.random() * 30;
+                let x = Math.random() * (320 - w);
+                akadalyok.push({ x: x, y: -60, w: w, h: 30 + Math.random() * 20 });
+            }
+            // Akadályok törlése, ha lementek
+            akadalyok = akadalyok.filter(a => a.y < 480);
+            // Ütközés vizsgálat
+            for (let a of akadalyok) {
+                if (auto.x < a.x + a.w && auto.x + auto.w > a.x && auto.y < a.y + a.h && auto.y + auto.h > a.y) {
+                    vege = true;
+                    document.getElementById('vege').style.display = "block";
+                }
+            }
+            // Rajzolás
+            ctx.clearRect(0, 0, 320, 480);
+            // Út
+            ctx.fillStyle = "#a8edea";
+            ctx.fillRect(0, 0, 320, 480);
+            // Sávok
+            ctx.strokeStyle = "#fff";
+            ctx.lineWidth = 4;
+            for (let i = 1; i < 4; i++) {
+                ctx.beginPath();
+                ctx.moveTo(i * 80, 0);
+                ctx.lineTo(i * 80, 480);
+                ctx.stroke();
+            }
+            // Autó
+            ctx.fillStyle = "#ff7eb3";
+            ctx.fillRect(auto.x, auto.y, auto.w, auto.h);
+            ctx.strokeStyle = "#7c53c7";
+            ctx.lineWidth = 3;
+            ctx.strokeRect(auto.x, auto.y, auto.w, auto.h);
+            // Akadályok
+            for (let a of akadalyok) {
+                ctx.fillStyle = "#43cea2";
+                ctx.fillRect(a.x, a.y, a.w, a.h);
+                ctx.strokeStyle = "#7c53c7";
+                ctx.strokeRect(a.x, a.y, a.w, a.h);
+            }
+            // Pontszám növelése
+            if (!vege) {
+                pont++;
+                document.getElementById('pont').textContent = "Pontszám: " + pont;
+                sebesseg = 2 + Math.floor(pont / 300);
+                anim = requestAnimationFrame(jatekLoop);
+            }
+        }
+
+        // Vezérlés: balra/jobbra nyíl
+        document.body.onkeydown = function (e) {
+            if (vege) return;
+            if (e.key === "ArrowLeft") {
+                auto.x -= 32;
+                if (auto.x < 0) auto.x = 0;
+            }
+            if (e.key === "ArrowRight") {
+                auto.x += 32;
+                if (auto.x + auto.w > 320) auto.x = 320 - auto.w;
+            }
+        };
+
+        indit();
+    </script>
+</body>
+
+</html>

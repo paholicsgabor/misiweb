@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <title>Minipi</title>
+  <style>
+    body {
+      background: linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      font-family: 'Comic Sans MS', 'Arial Rounded MT Bold', Arial, sans-serif;
+      margin: 0;
+    }
+
+    .login-box {
+      background: #fff;
+      padding: 40px 30px 30px 30px;
+      border-radius: 25px;
+      box-shadow: 0 8px 32px #7c53c733;
+      min-width: 320px;
+      text-align: center;
+    }
+
+    .login-box label {
+      display: block;
+      font-size: 1.2em;
+      color: #7c53c7;
+      margin: 18px 0 6px 0;
+    }
+
+    .login-box input {
+      font-size: 1.2em;
+      padding: 12px;
+      border: 2px solid #a18cd1;
+      border-radius: 12px;
+      outline: none;
+      width: 90%;
+      margin-bottom: 16px;
+      transition: border 0.3s;
+    }
+
+    .login-box input:focus {
+      border: 2px solid #ff7eb3;
+    }
+
+    .login-box button {
+      background: #7c53c7;
+      color: #fff;
+      font-size: 1.2em;
+      font-weight: bold;
+      padding: 12px 32px;
+      border: none;
+      border-radius: 12px;
+      margin-top: 18px;
+      box-shadow: 0 4px 16px #7c53c733;
+      cursor: pointer;
+      transition: background 0.3s, transform 0.2s;
+    }
+
+    .login-box button:hover {
+      background: #ff7eb3;
+      transform: scale(1.06);
+    }
+
+    #title {
+      font-size: 2.2em;
+      color: #7c53c7;
+      margin-bottom: 20px;
+      font-weight: bold;
+      letter-spacing: 2px;
+    }
+
+    #error-message {
+      display: none;
+      color: #fff;
+      background: #ff7eb3;
+      padding: 14px;
+      border-radius: 10px;
+      margin-bottom: 18px;
+      font-size: 1.1em;
+      font-weight: bold;
+      box-shadow: 0 2px 8px #ff7eb366;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="login-box">
+    <div id="title">Minipi Mnp</div>
+    <div id="error-message">Hibás felhasználónév vagy jelszó</div>
+    <form action="/login" method="POST">
+      <label for="username">Felhasználónév:</label>
+      <input type="text" id="username" name="username" required>
+      <label for="password">Jelszó:</label>
+      <input type="password" id="password" name="password" required>
+      <button type="submit">Bejelentkezés</button>
+    </form>
+  </div>
+  <script>
+    window.onload = function () {
+      const urlParams = new URLSearchParams(window.location.search);
+      const error = urlParams.get('error');
+
+      if (error) {
+        document.getElementById('error-message').style.display = 'block';
+      } else {
+        document.getElementById('error-message').style.display = 'none';
+      }
+    }
+  </script>
+</body>
+
+</html>

@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Minipi Music</title>
+    <style>
+        body {
+            background: linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%);
+            padding: 30px;
+            font-family: 'Comic Sans MS', 'Arial Rounded MT Bold', Arial, sans-serif;
+        }
+
+        #kereso {
+            font-size: 30px;
+            width: 90%;
+            padding: 12px 20px;
+            border: 2px solid #7c53c7;
+            border-radius: 15px;
+            box-shadow: 0 2px 8px #7c53c766;
+            margin-bottom: 20px;
+            outline: none;
+            transition: border 0.3s;
+        }
+
+        #kereso:focus {
+            border: 2.5px solid #ff7eb3;
+        }
+
+        a {
+            display: inline-block;
+            background: #fff;
+            color: #7c53c7;
+            text-decoration: none;
+            padding: 18px 36px;
+            margin: 10px 0;
+            border-radius: 25px;
+            font-size: 36px;
+            font-weight: bold;
+            box-shadow: 0 4px 16px #7c53c733;
+            transition: background 0.3s, color 0.3s, transform 0.2s;
+        }
+
+        a:hover {
+            background: #ff7eb3;
+            color: #fff;
+            transform: scale(1.05);
+            box-shadow: 0 6px 24px #ff7eb366;
+        }
+    </style>
+
+</head>
+
+<body>
+    <div style="font-size: 50px;">
+        <input type="text" id="kereso" placeholder="Keresés a zenék között..." style="font-size: 30px; width: 90%;">
+        <br />
+        <br />
+        <a href="private/1.mp3" id="a">Toca toca</a> <br />
+        <br />
+
+        <a href="private/2.mp3" id="b">
+            Who let the dogs out
+        </a>
+        <br />
+        <br />
+        <a href="private/3.mp3" id="c">
+            Úristen
+        </a>
+        <br />
+        <br />
+    </div>
+    <script>
+        document.getElementById("a").addEventListener("click", function () {
+            var audio = new Audio("file:///home/misi/Asztal/k%C3%B3dol%C3%A1s/MNP/private/1.mp3");
+            audio.play();
+        });
+        document.getElementById("b").addEventListener("click", function () {
+            var audio = new Audio("file:///home/misi/Asztal/k%C3%B3dol%C3%A1s/MNP/private/2.mp3");
+            audio.play();
+        });
+        document.getElementById("c").addEventListener("click", function () {
+            var audio = new Audio("file:///home/misi/Asztal/k%C3%B3dol%C3%A1s/MNP/private/3.mp3");
+            audio.play();
+        });
+        document.getElementById("kereso").addEventListener("input", function () {
+            var szoveg = this.value.toLowerCase();
+            ["a", "b", "c"].forEach(function (id) {
+                var link = document.getElementById(id);
+                if (link.textContent.toLowerCase().includes(szoveg)) {
+                    link.style.display = "";
+                } else {
+                    link.style.display = "none";
+                }
+            });
+        });
+    </script>
+</body>
+
+</html>
