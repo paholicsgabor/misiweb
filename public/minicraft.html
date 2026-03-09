@@ -9,15 +9,54 @@
 </head>
 
 <body>
+    <div id="damage-overlay"></div>
+    <div id="health-bar">
+        <div id="hearts">
+            <span class="heart full">&#10084;</span>
+            <span class="heart full">&#10084;</span>
+            <span class="heart full">&#10084;</span>
+            <span class="heart full">&#10084;</span>
+            <span class="heart full">&#10084;</span>
+            <span class="heart full">&#10084;</span>
+            <span class="heart full">&#10084;</span>
+            <span class="heart full">&#10084;</span>
+            <span class="heart full">&#10084;</span>
+            <span class="heart full">&#10084;</span>
+            <span class="heart full">&#10084;</span>
+            <span class="heart full">&#10084;</span>
+            <span class="heart full">&#10084;</span>
+            <span class="heart full">&#10084;</span>
+            <span class="heart full">&#10084;</span>
+            <span class="heart full">&#10084;</span>
+            <span class="heart full">&#10084;</span>
+            <span class="heart full">&#10084;</span>
+            <span class="heart full">&#10084;</span>
+            <span class="heart full">&#10084;</span>
+        </div>
+    </div>
+    <div id="inventory-bar"><b>Zsákmány:</b> <i>üres</i></div>
+    <div id="crafting-panel"></div>
+    <div id="toolbar"></div>
+    <div id="crosshair">+</div>
     <div id="blocker">
         <div id="instructions">
             <p style="font-size:36px">Click to play</p>
             <p>
                 Move: WASD<br />
                 Jump: SPACE<br />
-                Look: MOUSE
+                Look: MOUSE<br />
+                Break block: LEFT CLICK<br />
+                Place block: RIGHT CLICK<br />
+                Select block: 1-9<br />
+                Shoot: LEFT CLICK (no block)<br />
+                Crafting: E
             </p>
         </div>
+    </div>
+    <div id="gameover">
+        <p class="gameover-title">V&eacute;ge a j&aacute;t&eacute;knak!</p>
+        <p class="gameover-sub">Minden &eacute;leted elfogyott.</p>
+        <button onclick="location.reload()">&#218;jra</button>
     </div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/PointerLockControls.js"></script>
