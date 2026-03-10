@@ -245,7 +245,7 @@ canvas {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: 380px;
+    width: 420px;
     max-height: 80vh;
     overflow-y: auto;
     background: rgba(30, 30, 30, 0.95);
@@ -330,4 +330,246 @@ canvas {
     font-size: 12px;
     color: #888;
     margin-top: 10px;
+}
+
+/* Craft tabs */
+.craft-tabs {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 12px;
+}
+
+.craft-tab {
+    flex: 1;
+    padding: 8px;
+    border: 2px solid #555;
+    background: #222;
+    color: #aaa;
+    border-radius: 8px 8px 0 0;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 14px;
+    transition: background 0.2s;
+}
+
+.craft-tab.active {
+    background: #FF6F00;
+    color: white;
+    border-color: #FF6F00;
+}
+
+/* Grid area: 3x3 + nyíl + eredmény egymás mellett */
+.grid-area {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin: 10px 0;
+}
+
+.craft-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+    width: 210px;
+}
+
+.grid-arrow {
+    font-size: 28px;
+    color: #888;
+}
+
+.grid-output {
+    width: 72px;
+    height: 72px;
+    border: 3px solid #555;
+    border-radius: 8px;
+    background: #222;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.grid-output.has-result {
+    border-color: #FFD700;
+    background: rgba(255, 215, 0, 0.1);
+}
+
+.grid-output-icon {
+    font-size: 24px;
+}
+
+.grid-output-name {
+    font-size: 10px;
+    color: #FFD700;
+    font-weight: bold;
+    text-align: center;
+}
+
+.grid-output-count {
+    font-size: 11px;
+    color: #aaa;
+}
+
+.grid-craft-btn {
+    text-align: center;
+    margin: 8px 0;
+}
+
+.grid-craft-btn button {
+    padding: 8px 28px;
+    background: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 15px;
+    transition: background 0.2s;
+}
+
+.grid-craft-btn button:hover {
+    background: #388E3C;
+}
+
+.grid-cell {
+    width: 66px;
+    height: 66px;
+    border: 2px solid #666;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 11px;
+    color: #fff;
+    font-weight: bold;
+    text-shadow: 1px 1px 2px #000;
+    transition: border-color 0.2s;
+}
+
+.grid-cell:hover {
+    border-color: #FF6F00;
+}
+
+/* Blokk választó */
+.grid-blocks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    justify-content: center;
+    margin-bottom: 10px;
+}
+
+.grid-block-btn {
+    padding: 4px 8px;
+    border-radius: 5px;
+    font-size: 11px;
+    color: #fff;
+    font-weight: bold;
+    cursor: pointer;
+    text-shadow: 1px 1px 2px #000;
+    border: 2px solid transparent;
+    transition: border-color 0.2s;
+}
+
+.grid-block-btn:hover {
+    border-color: #FF6F00;
+}
+
+.grid-eraser {
+    background: #555 !important;
+    color: #ff5555;
+    font-size: 14px;
+}
+
+/* Grid eredmény */
+.grid-result {
+    text-align: center;
+    margin: 10px 0;
+    padding: 8px;
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+}
+
+.grid-result-name {
+    font-size: 16px;
+    font-weight: bold;
+    color: #FFD700;
+}
+
+.grid-result-empty {
+    font-size: 12px;
+    color: #888;
+}
+
+.grid-result button {
+    padding: 6px 18px;
+    background: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 14px;
+}
+
+.grid-result button:hover {
+    background: #388E3C;
+}
+
+/* Recept lista */
+.grid-recipe-list {
+    margin-top: 10px;
+    font-size: 12px;
+    color: #aaa;
+}
+
+.grid-recipe-item {
+    display: inline-block;
+    margin: 3px 6px;
+    padding: 2px 6px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 4px;
+}
+
+.grid-recipe-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px;
+    margin: 4px 0;
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 6px;
+}
+
+.mini-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    width: 54px;
+    flex-shrink: 0;
+}
+
+.mini-cell {
+    width: 16px;
+    height: 16px;
+    border: 1px solid #444;
+    border-radius: 2px;
+    font-size: 7px;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-shadow: 1px 1px 1px #000;
+}
+
+.grid-recipe-info {
+    font-size: 13px;
+    color: #ddd;
 }

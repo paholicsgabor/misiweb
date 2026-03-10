@@ -45,6 +45,15 @@ let treeTrunkMat, treeLeafMat, darkLeafMat;
 let flowerMats;
 let grassTuftMat, bushMat;
 
+// Érc anyagok (bányában)
+let coalOreMat, ironOreMat, goldOreMat, diamondOreMat, redstoneOreMat;
+
+// Dimenziók
+let currentDimension = 'overworld'; // 'overworld', 'nether', 'end'
+let netherPortalMat, endPortalMat;
+let netherrackMat, soulSandMat, glowstoneMat, lavaMat;
+let endStoneMat, purpurMat, voidMat;
+
 // Víz és épületek
 const SEA_LEVEL = 1;
 let waterMat, wallMat, roofMat, doorMat;
@@ -54,6 +63,32 @@ const buildings = []; // {x,z,w,d} épületek téglalapjai
 const inventory = {};
 let craftingOpen = false;
 const allies = []; // védő mobok
+let craftTab = 'mob'; // 'mob' vagy 'grid'
+const craftGrid = [null, null, null, null, null, null, null, null, null]; // 3x3 grid
+
+function saveGame() {
+    localStorage.setItem('mc_inventory', JSON.stringify(inventory));
+    // Csak a craftolt (nem alap) toolbar slotokat mentjük
+    const extraSlots = TOOLBAR_BLOCKS.slice(9).map(b => ({ color: b.color, name: b.name, icon: b.icon || '' }));
+    localStorage.setItem('mc_toolbar', JSON.stringify(extraSlots));
+}
+
+function loadGame() {
+    const inv = localStorage.getItem('mc_inventory');
+    if (inv) {
+        const data = JSON.parse(inv);
+        for (const k in data) inventory[k] = data[k];
+    }
+    const tb = localStorage.getItem('mc_toolbar');
+    if (tb) {
+        const slots = JSON.parse(tb);
+        slots.forEach(s => {
+            if (!TOOLBAR_BLOCKS.find(b => b.name === s.name)) {
+                TOOLBAR_BLOCKS.push(s);
+            }
+        });
+    }
+}
 
 function simpleHash(x, z) {
     let h = (x * 374761393 + z * 668265263) ^ 0x5bf03635;
@@ -201,15 +236,14 @@ function init() {
                 if (canJump === true) velocity.y += 350;
                 canJump = false;
                 break;
-            case 'Digit1': selectedSlot = 0; updateToolbar(); break;
-            case 'Digit2': selectedSlot = 1; updateToolbar(); break;
-            case 'Digit3': selectedSlot = 2; updateToolbar(); break;
-            case 'Digit4': selectedSlot = 3; updateToolbar(); break;
-            case 'Digit5': selectedSlot = 4; updateToolbar(); break;
-            case 'Digit6': selectedSlot = 5; updateToolbar(); break;
-            case 'Digit7': selectedSlot = 6; updateToolbar(); break;
-            case 'Digit8': selectedSlot = 7; updateToolbar(); break;
-            case 'Digit9': selectedSlot = 8; updateToolbar(); break;
+            default:
+                const SLOT_KEYS = ['KeyZ', 'KeyX', 'KeyC', 'KeyV', 'KeyB', 'KeyN', 'KeyM', 'KeyK', 'KeyL', 'KeyO', 'KeyP', 'KeyI', 'KeyU', 'KeyY', 'KeyT', 'KeyR', 'KeyF', 'KeyG', 'KeyH', 'KeyJ'];
+                const slotIdx = SLOT_KEYS.indexOf(event.code);
+                if (slotIdx !== -1 && slotIdx < TOOLBAR_BLOCKS.length) {
+                    selectedSlot = slotIdx;
+                    updateToolbar();
+                }
+                break;
         }
     };
 
@@ -261,6 +295,24 @@ function init() {
     grassTuftMat = new THREE.MeshLambertMaterial({ color: 0x66BB6A, transparent: true, opacity: 0.9 });
     bushMat = new THREE.MeshLambertMaterial({ color: 0x388E3C });
 
+    // Érc anyagok
+    coalOreMat = new THREE.MeshLambertMaterial({ color: 0x333333 });    // szén - sötétszürke
+    ironOreMat = new THREE.MeshLambertMaterial({ color: 0xD4A574 });    // vas - barna-narancs
+    goldOreMat = new THREE.MeshLambertMaterial({ color: 0xFFD700 });    // arany - sárga
+    diamondOreMat = new THREE.MeshLambertMaterial({ color: 0x00E5FF }); // gyémánt - cián
+    redstoneOreMat = new THREE.MeshLambertMaterial({ color: 0xD50000 });// redstone - piros
+
+    // Dimenzió anyagok
+    netherPortalMat = new THREE.MeshBasicMaterial({ color: 0x9C27B0, transparent: true, opacity: 0.7 });
+    endPortalMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.8 });
+    netherrackMat = new THREE.MeshLambertMaterial({ color: 0x6D1B1B });
+    soulSandMat = new THREE.MeshLambertMaterial({ color: 0x5C4033 });
+    glowstoneMat = new THREE.MeshBasicMaterial({ color: 0xFFCC00 });
+    lavaMat = new THREE.MeshBasicMaterial({ color: 0xFF4400 });
+    endStoneMat = new THREE.MeshLambertMaterial({ color: 0xDDDDAA });
+    purpurMat = new THREE.MeshLambertMaterial({ color: 0xAA55CC });
+    voidMat = new THREE.MeshBasicMaterial({ color: 0x110022 });
+
     // Víz és épület anyagok
     waterMat = new THREE.MeshLambertMaterial({ color: 0x1E88E5, transparent: true, opacity: 0.6 });
     wallMat = new THREE.MeshLambertMaterial({ color: 0x795548 });
@@ -285,9 +337,13 @@ function init() {
     document.addEventListener('mousedown', onMouseDown);
     document.addEventListener('contextmenu', function (e) { e.preventDefault(); });
 
+    // Mentett adatok betöltése
+    loadGame();
+
     // Eszköztár anyagok
     toolbarMaterials = TOOLBAR_BLOCKS.map(t => new THREE.MeshLambertMaterial({ color: t.color }));
     initToolbar();
+    updateInventoryUI();
 
     renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setPixelRatio(window.devicePixelRatio);
@@ -341,7 +397,7 @@ function animate() {
         controls.getObject().position.y += (velocity.y * delta); // new behavior
 
         const playerPos = controls.getObject().position;
-        const groundY = getTerrainHeight(playerPos.x, playerPos.z);
+        const groundY = getPlayerGroundY(playerPos.x, playerPos.y, playerPos.z);
 
         if (playerPos.y < groundY) {
             velocity.y = 0;
@@ -349,6 +405,9 @@ function animate() {
             canJump = true;
             checkFallDamage(groundY);
         }
+
+        // Portál detektálás
+        checkPortalCollision(playerPos);
 
         // Chunkok frissítése a játékos pozíciója alapján
         updateChunks(playerPos.x, playerPos.z);
@@ -413,6 +472,9 @@ function generateChunk(cx, cz) {
     const key = chunkKey(cx, cz);
     if (chunks[key]) return;
 
+    if (currentDimension === 'nether') return generateNetherChunk(cx, cz);
+    if (currentDimension === 'end') return generateEndChunk(cx, cz);
+
     const group = new THREE.Group();
     const chunkBlocks = [];
 
@@ -422,13 +484,22 @@ function generateChunk(cx, cz) {
             const worldZ = cz * CHUNK_SIZE + bz;
             const height = getHeight(worldX, worldZ);
 
-            // Blokkok a magasság alapján
-            for (let by = Math.max(height - 1, -1); by <= Math.max(height, SEA_LEVEL); by++) {
+            // Blokkok a magasság alapján (-8 mélységig = bánya)
+            const MINE_DEPTH = -8;
+            for (let by = MINE_DEPTH; by <= Math.max(height, SEA_LEVEL); by++) {
                 let mat;
                 if (by > height && by <= SEA_LEVEL) {
-                    // Víz blokk
                     mat = waterMat;
                 } else if (by <= height) {
+                    // Barlang üreg ellenőrzés (3D noise)
+                    if (by < height - 1) {
+                        const caveVal = noise2D(worldX * 0.08 + by * 0.1, worldZ * 0.08 + by * 0.15);
+                        const caveVal2 = noise2D(worldX * 0.15 + by * 0.05, worldZ * 0.12);
+                        if (caveVal > 0.3 && caveVal2 > 0.1) {
+                            continue; // barlang üreg - ne rakj ide blokkot
+                        }
+                    }
+
                     // Homok a vízpart közelében
                     const isBeach = height <= SEA_LEVEL + 1 && height >= SEA_LEVEL - 1;
                     if (by === height && isBeach) {
@@ -438,7 +509,22 @@ function generateChunk(cx, cz) {
                     } else if (by >= height - 2) {
                         mat = blockMaterials[1]; // dirt
                     } else {
-                        mat = blockMaterials[2]; // stone
+                        // Mélység: érc generálás
+                        const oreHash = simpleHash(worldX + by * 31, worldZ + by * 17);
+                        const oreChance = oreHash % 100;
+                        if (by <= -6 && oreChance < 3) {
+                            mat = diamondOreMat; // gyémánt (nagyon mélyen, ritka)
+                        } else if (by <= -4 && oreChance < 6) {
+                            mat = goldOreMat; // arany
+                        } else if (by <= -2 && oreChance < 10) {
+                            mat = redstoneOreMat; // redstone
+                        } else if (by <= 0 && oreChance < 18) {
+                            mat = ironOreMat; // vas
+                        } else if (by < height - 2 && oreChance < 25) {
+                            mat = coalOreMat; // szén (leggyakoribb)
+                        } else {
+                            mat = blockMaterials[2]; // stone
+                        }
                     }
                 } else {
                     continue;
@@ -467,6 +553,28 @@ function generateChunk(cx, cz) {
         const bHeight = getHeight(wX, wZ);
         if (bHeight > SEA_LEVEL + 1) {
             createBuilding(group, chunkBlocks, wX, wZ, bHeight);
+        }
+    }
+
+    // Nether portál (lila, ritka)
+    const portalHash1 = simpleHash(cx * 11, cz * 23);
+    if (portalHash1 % 50 === 0) {
+        const pX = (cx * CHUNK_SIZE + 3) * BLOCK_SIZE;
+        const pH = getHeight(cx * CHUNK_SIZE + 3, cz * CHUNK_SIZE + 3);
+        const pZ = (cz * CHUNK_SIZE + 3) * BLOCK_SIZE;
+        if (pH > SEA_LEVEL) {
+            createPortal(group, pX, (pH + 1) * BLOCK_SIZE, pZ, 'nether');
+        }
+    }
+
+    // End portál (fekete, nagyon ritka)
+    const portalHash2 = simpleHash(cx * 17, cz * 31);
+    if (portalHash2 % 80 === 0) {
+        const pX = (cx * CHUNK_SIZE + 1) * BLOCK_SIZE;
+        const pH = getHeight(cx * CHUNK_SIZE + 1, cz * CHUNK_SIZE + 1);
+        const pZ = (cz * CHUNK_SIZE + 1) * BLOCK_SIZE;
+        if (pH > SEA_LEVEL) {
+            createPortal(group, pX, (pH + 1) * BLOCK_SIZE, pZ, 'end');
         }
     }
 
@@ -506,6 +614,185 @@ function generateChunk(cx, cz) {
     scene.add(group);
     chunkBlocks.forEach(b => objects.push(b));
     chunks[key] = { group: group, blocks: chunkBlocks };
+}
+
+function createPortal(group, x, y, z, type) {
+    const isNether = type === 'nether' || type === 'overworld_from_nether';
+    const isEnd = type === 'end' || type === 'overworld_from_end';
+    const mat = isNether ? netherPortalMat : endPortalMat;
+    const frameMat = isNether
+        ? new THREE.MeshLambertMaterial({ color: 0x4A148C })
+        : new THREE.MeshLambertMaterial({ color: 0x1A237E });
+
+    // Keret (4 blokk széles, 5 magas)
+    for (let fx = 0; fx < 4; fx++) {
+        for (let fy = 0; fy < 5; fy++) {
+            const isFrame = fx === 0 || fx === 3 || fy === 0 || fy === 4;
+            const isInside = !isFrame;
+            const bMat = isInside ? mat : frameMat;
+            const box = new THREE.Mesh(boxGeometry, bMat);
+            box.position.set(x + fx * BLOCK_SIZE, y + fy * BLOCK_SIZE, z);
+            if (isInside) {
+                box.userData.isPortal = type;
+            }
+            group.add(box);
+        }
+    }
+}
+
+function generateNetherChunk(cx, cz) {
+    const key = chunkKey(cx, cz);
+    if (chunks[key]) return;
+
+    const group = new THREE.Group();
+    const chunkBlocks = [];
+
+    for (let bx = 0; bx < CHUNK_SIZE; bx++) {
+        for (let bz = 0; bz < CHUNK_SIZE; bz++) {
+            const worldX = cx * CHUNK_SIZE + bx;
+            const worldZ = cz * CHUNK_SIZE + bz;
+            const h = Math.floor(noise2D(worldX * 0.04, worldZ * 0.04) * 3 + 3);
+
+            for (let by = 0; by <= h; by++) {
+                const hash = simpleHash(worldX + by * 7, worldZ + by * 13);
+                let mat;
+                if (by === h) {
+                    mat = (hash % 10 < 2) ? soulSandMat : netherrackMat;
+                } else if (by === 0 && h <= 1) {
+                    mat = lavaMat; // láva az alacsony helyeken
+                } else {
+                    mat = (hash % 15 === 0) ? glowstoneMat : netherrackMat;
+                }
+
+                const box = new THREE.Mesh(boxGeometry, mat);
+                box.position.set(worldX * BLOCK_SIZE, by * BLOCK_SIZE, worldZ * BLOCK_SIZE);
+                group.add(box);
+                chunkBlocks.push(box);
+            }
+
+            // Tető (barlang hatás)
+            const ceilH = h + 8 + Math.floor(noise2D(worldX * 0.06, worldZ * 0.06) * 2);
+            for (let cy = ceilH; cy <= ceilH + 1; cy++) {
+                const box = new THREE.Mesh(boxGeometry, netherrackMat);
+                box.position.set(worldX * BLOCK_SIZE, cy * BLOCK_SIZE, worldZ * BLOCK_SIZE);
+                group.add(box);
+                chunkBlocks.push(box);
+            }
+        }
+    }
+
+    // Visszafelé portál (minden 10. chunk)
+    if (simpleHash(cx * 3, cz * 7) % 10 === 0) {
+        const pX = (cx * CHUNK_SIZE + 3) * BLOCK_SIZE;
+        const pH = Math.floor(noise2D((cx * CHUNK_SIZE + 3) * 0.04, (cz * CHUNK_SIZE + 3) * 0.04) * 3 + 3);
+        const pZ = (cz * CHUNK_SIZE + 3) * BLOCK_SIZE;
+        createPortal(group, pX, (pH + 1) * BLOCK_SIZE, pZ, 'overworld_from_nether');
+    }
+
+    scene.add(group);
+    chunkBlocks.forEach(b => objects.push(b));
+    chunks[key] = { group: group, blocks: chunkBlocks };
+}
+
+function generateEndChunk(cx, cz) {
+    const key = chunkKey(cx, cz);
+    if (chunks[key]) return;
+
+    const group = new THREE.Group();
+    const chunkBlocks = [];
+
+    for (let bx = 0; bx < CHUNK_SIZE; bx++) {
+        for (let bz = 0; bz < CHUNK_SIZE; bz++) {
+            const worldX = cx * CHUNK_SIZE + bx;
+            const worldZ = cz * CHUNK_SIZE + bz;
+
+            // Szigetek: távolság a 0,0-tól
+            const dist = Math.sqrt(worldX * worldX + worldZ * worldZ);
+            const islandNoise = noise2D(worldX * 0.05, worldZ * 0.05);
+            const hasGround = (dist < 15) || (islandNoise > 0.2 && dist < 40);
+
+            if (!hasGround) continue;
+
+            const h = Math.floor(islandNoise * 2 + 2);
+            for (let by = 0; by <= h; by++) {
+                const hash = simpleHash(worldX + by * 5, worldZ + by * 9);
+                let mat;
+                if (hash % 20 === 0) {
+                    mat = purpurMat;
+                } else {
+                    mat = endStoneMat;
+                }
+                const box = new THREE.Mesh(boxGeometry, mat);
+                box.position.set(worldX * BLOCK_SIZE, by * BLOCK_SIZE, worldZ * BLOCK_SIZE);
+                group.add(box);
+                chunkBlocks.push(box);
+            }
+        }
+    }
+
+    // Visszafelé portál (a közepe közelében)
+    if (cx === 0 && cz === 0) {
+        createPortal(group, 0, 4 * BLOCK_SIZE, 0, 'overworld_from_end');
+    }
+
+    scene.add(group);
+    chunkBlocks.forEach(b => objects.push(b));
+    chunks[key] = { group: group, blocks: chunkBlocks };
+}
+
+let portalCooldown = 0;
+function checkPortalCollision(playerPos) {
+    if (portalCooldown > 0) { portalCooldown--; return; }
+
+    for (const obj of objects) {
+        if (!obj.userData || !obj.userData.isPortal) continue;
+        const dx = Math.abs(playerPos.x - obj.position.x);
+        const dy = Math.abs(playerPos.y - obj.position.y);
+        const dz = Math.abs(playerPos.z - obj.position.z);
+        if (dx < BLOCK_SIZE && dy < BLOCK_SIZE * 2 && dz < BLOCK_SIZE) {
+            const portalType = obj.userData.isPortal;
+            portalCooldown = 60; // ne ugráljon oda-vissza
+            if (portalType === 'nether') {
+                switchDimension('nether');
+            } else if (portalType === 'end') {
+                switchDimension('end');
+            } else if (portalType === 'overworld_from_nether' || portalType === 'overworld_from_end') {
+                switchDimension('overworld');
+            }
+            return;
+        }
+    }
+}
+
+function switchDimension(newDim) {
+    // Összes chunk és objektum törlése
+    for (const key of Object.keys(chunks)) {
+        const [kcx, kcz] = key.split(',').map(Number);
+        removeChunk(kcx, kcz);
+    }
+    lastChunkX = null;
+    lastChunkZ = null;
+
+    currentDimension = newDim;
+
+    // Ég szín és köd beállítás
+    if (newDim === 'nether') {
+        scene.background = new THREE.Color(0x330000);
+        scene.fog = new THREE.Fog(0x330000, 30, 250);
+    } else if (newDim === 'end') {
+        scene.background = new THREE.Color(0x0A0015);
+        scene.fog = new THREE.Fog(0x0A0015, 40, 300);
+    } else {
+        scene.background = new THREE.Color(0x87CEEB);
+        scene.fog = new THREE.Fog(0x87CEEB, 60, 350);
+    }
+
+    // Játékos pozíció reset
+    const pp = controls.getObject().position;
+    pp.set(0, 120, 0);
+
+    // Új chunkok generálása
+    updateChunks(0, 0);
 }
 
 function createBuilding(group, chunkBlocks, wX, wZ, bHeight) {
@@ -688,6 +975,21 @@ function getTerrainHeight(worldPosX, worldPosZ) {
     const bz = Math.floor(worldPosZ / BLOCK_SIZE);
     const h = getHeight(bx, bz);
     return (h + 1) * BLOCK_SIZE + BLOCK_SIZE / 2;
+}
+
+const groundRay = new THREE.Raycaster();
+function getPlayerGroundY(px, py, pz) {
+    // Raycaster lefelé a játékos pozíciójából
+    groundRay.set(
+        new THREE.Vector3(px, py, pz),
+        new THREE.Vector3(0, -1, 0)
+    );
+    groundRay.far = 300;
+    const hits = groundRay.intersectObjects(objects, false);
+    if (hits.length > 0) {
+        return hits[0].point.y + BLOCK_SIZE / 2;
+    }
+    return -8 * BLOCK_SIZE; // bánya alja
 }
 
 // === MOB RENDSZER ===
@@ -1060,11 +1362,79 @@ function shootBullet() {
 
 function breakBlock(hit) {
     const block = hit.object;
+
+    // Ha TNT, robbanás!
+    if (block.userData && block.userData.isTNT) {
+        explodeTNT(block.position.clone());
+    }
+
     // Eltávolítás az objects tömbből
     const idx = objects.indexOf(block);
     if (idx !== -1) objects.splice(idx, 1);
     // Eltávolítás a parent group-ból
     if (block.parent) block.parent.remove(block);
+}
+
+function explodeTNT(pos) {
+    const RADIUS = 3; // blokk sugár
+    const range = RADIUS * BLOCK_SIZE;
+
+    // Környező blokkok széttörése
+    for (let i = objects.length - 1; i >= 0; i--) {
+        const obj = objects[i];
+        const dx = obj.position.x - pos.x;
+        const dy = obj.position.y - pos.y;
+        const dz = obj.position.z - pos.z;
+        const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        if (dist < range && dist > 0) {
+            if (obj.parent) obj.parent.remove(obj);
+            objects.splice(i, 1);
+        }
+    }
+
+    // Mobok sebzése a közelben
+    for (let i = mobs.length - 1; i >= 0; i--) {
+        const mob = mobs[i];
+        const mx = mob.mesh.position.x - pos.x;
+        const mz = mob.mesh.position.z - pos.z;
+        const md = Math.sqrt(mx * mx + mz * mz);
+        if (md < range * 1.5) {
+            mob.hp -= 5;
+            if (mob.hp <= 0) {
+                const dropName = mob.type.name;
+                inventory[dropName] = (inventory[dropName] || 0) + 1;
+                updateInventoryUI();
+                scene.remove(mob.mesh);
+                mobs.splice(i, 1);
+            }
+        }
+    }
+
+    // Vizuális robbanás effekt
+    const flashGeo = new THREE.SphereGeometry(range, 12, 12);
+    const flashMat = new THREE.MeshBasicMaterial({ color: 0xFF4400, transparent: true, opacity: 0.8 });
+    const flash = new THREE.Mesh(flashGeo, flashMat);
+    flash.position.copy(pos);
+    scene.add(flash);
+
+    // Részecskék
+    for (let p = 0; p < 15; p++) {
+        const partGeo = new THREE.BoxGeometry(4, 4, 4);
+        const partMat = new THREE.MeshBasicMaterial({ color: Math.random() > 0.5 ? 0xFF6600 : 0x333333 });
+        const part = new THREE.Mesh(partGeo, partMat);
+        part.position.copy(pos);
+        part.position.x += (Math.random() - 0.5) * range * 2;
+        part.position.y += Math.random() * range;
+        part.position.z += (Math.random() - 0.5) * range * 2;
+        scene.add(part);
+        setTimeout(() => scene.remove(part), 500 + Math.random() * 500);
+    }
+
+    // Flash eltűnés
+    setTimeout(() => {
+        flash.material.opacity = 0.4;
+        setTimeout(() => scene.remove(flash), 200);
+    }, 150);
 }
 
 function placeBlock(hit) {
@@ -1084,6 +1454,10 @@ function placeBlock(hit) {
 
     const box = new THREE.Mesh(boxGeometry, toolbarMaterials[selectedSlot]);
     box.position.copy(pos);
+    // TNT jelölés
+    if (TOOLBAR_BLOCKS[selectedSlot] && TOOLBAR_BLOCKS[selectedSlot].name === 'TNT') {
+        box.userData.isTNT = true;
+    }
     scene.add(box);
     objects.push(box);
 }
@@ -1097,11 +1471,12 @@ function initToolbar() {
         slot.className = 'slot' + (i === selectedSlot ? ' selected' : '');
         slot.style.backgroundColor = '#' + TOOLBAR_BLOCKS[i].color.toString(16).padStart(6, '0');
         slot.title = TOOLBAR_BLOCKS[i].name;
-        const num = document.createElement('span');
-        num.textContent = (i + 1);
-        num.style.fontSize = '11px';
-        num.style.opacity = '0.7';
-        slot.appendChild(num);
+        const SLOT_LETTERS = 'ZXCVBNMKLOPIUYTRFGHJ';
+        const label = document.createElement('span');
+        label.textContent = i < SLOT_LETTERS.length ? SLOT_LETTERS[i] : '';
+        label.style.fontSize = '10px';
+        label.style.opacity = '0.7';
+        slot.appendChild(label);
         toolbar.appendChild(slot);
     }
 }
@@ -1200,6 +1575,7 @@ function updateInventoryUI() {
         });
     }
     el.innerHTML = html;
+    saveGame();
 }
 
 function toggleCrafting() {
@@ -1216,28 +1592,163 @@ function toggleCrafting() {
     }
 }
 
+// 3x3 barkács receptek: pattern = 9 elem tömb (null = üres, string = blokk név)
+const GRID_RECIPES = [
+    { pattern: ['Fa', 'Fa', 'Fa', null, 'Fa', null, null, 'Fa', null], result: 'Csákány', resultCount: 1, icon: '⛏️' },
+    { pattern: ['Fa', 'Fa', null, 'Fa', null, null, 'Fa', null, null], result: 'Fejsze', resultCount: 1, icon: '🪓' },
+    { pattern: [null, 'Fa', null, null, 'Fa', null, null, 'Fa', null], result: 'Bot', resultCount: 4, icon: '🥢' },
+    { pattern: ['Fa', 'Fa', 'Fa', 'Fa', null, 'Fa', 'Fa', 'Fa', 'Fa'], result: 'Láda', resultCount: 1, icon: '📦' },
+    { pattern: ['Kő', 'Kő', 'Kő', 'Kő', null, 'Kő', null, null, null], result: 'Kemence', resultCount: 1, icon: '🔥' },
+    { pattern: [null, 'Vörös', null, 'Vörös', 'Vörös', 'Vörös', null, 'Vörös', null], result: 'TNT', resultCount: 1, icon: '💣' },
+    { pattern: ['Arany', 'Arany', 'Arany', null, 'Fa', null, null, 'Fa', null], result: 'Arany Csákány', resultCount: 1, icon: '✨⛏️' },
+    { pattern: ['Kő', 'Kő', 'Kő', null, 'Fa', null, null, 'Fa', null], result: 'Kő Csákány', resultCount: 1, icon: '⛏️' },
+    { pattern: ['Fa', 'Fa', null, 'Fa', 'Fa', null, null, null, null], result: 'Barkácsasztal', resultCount: 1, icon: '🔨' },
+    { pattern: ['Fű', 'Fű', 'Fű', 'Fű', 'Fű', 'Fű', 'Fű', 'Fű', 'Fű'], result: 'Szénabála', resultCount: 1, icon: '🌾' },
+];
+
 function renderCraftingUI() {
     const panel = document.getElementById('crafting-panel');
     if (!panel) return;
-    let html = '<h2>Barkácsasztal</h2><p>Keverd össze a mob tokeneket!</p>';
-    html += '<div class="craft-list">';
-    CRAFT_RECIPES.forEach((recipe, idx) => {
-        const needStr = Object.entries(recipe.need).map(([k, v]) => k + ' x' + v).join(' + ');
-        let canCraft = true;
-        for (const [k, v] of Object.entries(recipe.need)) {
-            if ((inventory[k] || 0) < v) canCraft = false;
-        }
-        html += '<div class="craft-recipe' + (canCraft ? ' craftable' : ' locked') + '">';
-        html += '<span class="craft-name">' + recipe.result + '</span>';
-        html += '<span class="craft-need">' + needStr + '</span>';
-        if (canCraft) {
-            html += '<button onclick="doCraft(' + idx + ')">Készít</button>';
+    let html = '<div class="craft-tabs">';
+    html += '<button class="craft-tab' + (craftTab === 'mob' ? ' active' : '') + '" onclick="craftTab=\'mob\';renderCraftingUI()">Mobkeverő</button>';
+    html += '<button class="craft-tab' + (craftTab === 'grid' ? ' active' : '') + '" onclick="craftTab=\'grid\';renderCraftingUI()">Barkács 3×3</button>';
+    html += '</div>';
+
+    if (craftTab === 'mob') {
+        html += '<h2>Mobkeverő</h2><p>Keverd össze a mob tokeneket!</p>';
+        html += '<div class="craft-list">';
+        CRAFT_RECIPES.forEach((recipe, idx) => {
+            const needStr = Object.entries(recipe.need).map(([k, v]) => k + ' x' + v).join(' + ');
+            let canCraft = true;
+            for (const [k, v] of Object.entries(recipe.need)) {
+                if ((inventory[k] || 0) < v) canCraft = false;
+            }
+            html += '<div class="craft-recipe' + (canCraft ? ' craftable' : ' locked') + '">';
+            html += '<span class="craft-name">' + recipe.result + '</span>';
+            html += '<span class="craft-need">' + needStr + '</span>';
+            if (canCraft) {
+                html += '<button onclick="doCraft(' + idx + ')">Készít</button>';
+            }
+            html += '</div>';
+        });
+        html += '</div>';
+    } else {
+        html += '<h2>Barkácsasztal</h2><p>Rakd be a blokkokat a 3×3-as rácsba!</p>';
+        // Blokk választó
+        html += '<div class="grid-blocks">';
+        TOOLBAR_BLOCKS.forEach(b => {
+            html += '<div class="grid-block-btn" style="background:' + '#' + b.color.toString(16).padStart(6, '0') + '" onclick="selectGridBlock(\'' + b.name + '\')">' + b.name + '</div>';
+        });
+        html += '<div class="grid-block-btn grid-eraser" onclick="selectGridBlock(null)">✕</div>';
+        html += '</div>';
+        // 3x3 grid + eredmény négyzet egymás mellett
+        const match = checkGridRecipe();
+        html += '<div class="grid-area">';
+        html += '<div class="craft-grid">';
+        for (let i = 0; i < 9; i++) {
+            const val = craftGrid[i];
+            const tb = val ? TOOLBAR_BLOCKS.find(b => b.name === val) : null;
+            const bg = tb ? '#' + tb.color.toString(16).padStart(6, '0') : '#333';
+            html += '<div class="grid-cell" style="background:' + bg + '" onclick="placeGridBlock(' + i + ')">' + (val || '') + '</div>';
         }
         html += '</div>';
-    });
-    html += '</div>';
+        html += '<div class="grid-arrow">➜</div>';
+        html += '<div class="grid-output' + (match ? ' has-result' : '') + '">';
+        if (match) {
+            html += '<div class="grid-output-icon">' + match.icon + '</div>';
+            html += '<div class="grid-output-name">' + match.result + '</div>';
+            if (match.resultCount > 1) html += '<div class="grid-output-count">x' + match.resultCount + '</div>';
+        }
+        html += '</div>';
+        html += '</div>';
+        // Készít gomb (mindig látható)
+        html += '<div class="grid-craft-btn">';
+        if (match) {
+            html += '<button onclick="doGridCraft()">Készít: ' + match.result + '</button>';
+        } else {
+            html += '<button disabled style="opacity:0.3;cursor:default">Készít</button>';
+        }
+        html += '</div>';
+        // Recept lista mini 3x3 mintával
+        html += '<div class="grid-recipe-list"><b>Receptek:</b>';
+        GRID_RECIPES.forEach(r => {
+            html += '<div class="grid-recipe-row">';
+            html += '<div class="mini-grid">';
+            for (let i = 0; i < 9; i++) {
+                const p = r.pattern[i];
+                const tb = p ? TOOLBAR_BLOCKS.find(b => b.name === p) : null;
+                const bg = tb ? '#' + tb.color.toString(16).padStart(6, '0') : '#222';
+                html += '<div class="mini-cell" style="background:' + bg + '">' + (p ? p.charAt(0) : '') + '</div>';
+            }
+            html += '</div>';
+            html += '<div class="grid-recipe-info">' + r.icon + ' <b>' + r.result + '</b>';
+            if (r.resultCount > 1) html += ' x' + r.resultCount;
+            html += '</div>';
+            html += '</div>';
+        });
+        html += '</div>';
+    }
     html += '<p class="craft-hint">Nyomj <b>E</b>-t a bezáráshoz</p>';
     panel.innerHTML = html;
+}
+
+let selectedGridBlock = null;
+
+function selectGridBlock(name) {
+    selectedGridBlock = name;
+}
+
+function placeGridBlock(idx) {
+    craftGrid[idx] = selectedGridBlock;
+    renderCraftingUI();
+}
+
+function checkGridRecipe() {
+    for (const recipe of GRID_RECIPES) {
+        let match = true;
+        for (let i = 0; i < 9; i++) {
+            const need = recipe.pattern[i];
+            const have = craftGrid[i];
+            if (need === null || need === 'null') {
+                if (have !== null) { match = false; break; }
+            } else {
+                if (have !== need) { match = false; break; }
+            }
+        }
+        if (match) return recipe;
+    }
+    return null;
+}
+
+function doGridCraft() {
+    const match = checkGridRecipe();
+    if (!match) return;
+    // Grid ürítése
+    for (let i = 0; i < 9; i++) craftGrid[i] = null;
+    // Eredmény az inventárba
+    inventory[match.result] = (inventory[match.result] || 0) + match.resultCount;
+    updateInventoryUI();
+    // Tárgy hozzáadása az eszköztárhoz (ha még nincs ott)
+    addCraftedToToolbar(match);
+    renderCraftingUI();
+}
+
+function addCraftedToToolbar(recipe) {
+    // Ha már van ilyen nevű slot, ne adjuk hozzá újra
+    if (TOOLBAR_BLOCKS.find(b => b.name === recipe.result)) return;
+    // Szín az ikonból: használjunk egy egyedi színt
+    const craftColors = {
+        'Csákány': 0x9E9E9E, 'Fejsze': 0x795548, 'Bot': 0x8D6E63,
+        'Láda': 0xA1887F, 'Kemence': 0xFF5722, 'TNT': 0xF44336,
+        'Arany Csákány': 0xFFD700, 'Kő Csákány': 0x757575,
+        'Barkácsasztal': 0xFF6F00, 'Szénabála': 0xCDDC39,
+    };
+    const color = craftColors[recipe.result] || 0xBDBDBD;
+    TOOLBAR_BLOCKS.push({ color: color, name: recipe.result, icon: recipe.icon });
+    toolbarMaterials.push(new THREE.MeshLambertMaterial({ color: color }));
+    initToolbar();
+    updateToolbar();
+    saveGame();
 }
 
 function doCraft(idx) {
