@@ -780,6 +780,12 @@ function switchDimension(newDim) {
     lastChunkX = null;
     lastChunkZ = null;
 
+    // Mobok törlése
+    for (let i = mobs.length - 1; i >= 0; i--) {
+        scene.remove(mobs[i].mesh);
+    }
+    mobs.length = 0;
+
     currentDimension = newDim;
 
     // Ég szín és köd beállítás
@@ -800,6 +806,9 @@ function switchDimension(newDim) {
 
     // Új chunkok generálása
     updateChunks(0, 0);
+
+    // Új mobok spawnolása az új dimenzióban
+    setTimeout(() => spawnMobs(5), 500);
 }
 
 function createBuilding(group, chunkBlocks, wX, wZ, bHeight) {
@@ -1153,13 +1162,107 @@ function createMobMesh(type) {
         rightEye.position.y = 27;
     }
 
+    // Netherman: tüzes, magas, szarvas
+    if (type.name === 'Netherman') {
+        body.scale.set(0.7, 1.6, 0.7);
+        body.position.y = 9;
+        head.position.y = 24;
+        head.scale.set(1.1, 1.1, 1.1);
+        leftLeg.scale.set(0.6, 1.3, 0.6);
+        leftLeg.position.y = -3;
+        rightLeg.scale.set(0.6, 1.3, 0.6);
+        rightLeg.position.y = -3;
+        leftEye.position.y = 25;
+        rightEye.position.y = 25;
+        // Szarvak
+        const hornGeo = new THREE.BoxGeometry(1.5, 5, 1.5);
+        const hornMat = new THREE.MeshBasicMaterial({ color: 0xFF0000 });
+        const lHorn = new THREE.Mesh(hornGeo, hornMat);
+        lHorn.position.set(-3, 29, 0);
+        lHorn.rotation.z = 0.3;
+        group.add(lHorn);
+        const rHorn = new THREE.Mesh(hornGeo, hornMat);
+        rHorn.position.set(3, 29, 0);
+        rHorn.rotation.z = -0.3;
+        group.add(rHorn);
+        // Tűz részecskék (statikus díszítés)
+        const fireGeo = new THREE.BoxGeometry(2, 3, 2);
+        const fireMat = new THREE.MeshBasicMaterial({ color: 0xFF6600, transparent: true, opacity: 0.7 });
+        for (let f = 0; f < 3; f++) {
+            const fire = new THREE.Mesh(fireGeo, fireMat);
+            fire.position.set((f - 1) * 3, 18 + f * 2, 0);
+            group.add(fire);
+        }
+    }
+
+    // Ghast: nagy lebegő fehér kocka, szomorú arc
+    if (type.name === 'Ghast') {
+        body.scale.set(2.5, 2.5, 2.5);
+        body.position.y = 20;
+        head.visible = false;
+        leftLeg.visible = false;
+        rightLeg.visible = false;
+        leftEye.scale.set(2, 2, 1);
+        leftEye.position.set(-4, 22, 8);
+        rightEye.scale.set(2, 2, 1);
+        rightEye.position.set(4, 22, 8);
+        // Szomorú száj
+        const mouthGeo = new THREE.BoxGeometry(6, 2, 1);
+        const mouthMat = new THREE.MeshBasicMaterial({ color: 0x880000 });
+        const mouth = new THREE.Mesh(mouthGeo, mouthMat);
+        mouth.position.set(0, 17, 8);
+        group.add(mouth);
+        // Csápok
+        const tentGeo = new THREE.BoxGeometry(1.5, 10, 1.5);
+        const tentMat = new THREE.MeshLambertMaterial({ color: 0xCCCCCC });
+        for (let t = 0; t < 4; t++) {
+            const tent = new THREE.Mesh(tentGeo, tentMat);
+            tent.position.set((t - 1.5) * 5, 4, 0);
+            group.add(tent);
+        }
+    }
+
+    // Blaze: aranysárga forgó pálcákkal
+    if (type.name === 'Blaze') {
+        body.scale.set(0.6, 0.8, 0.6);
+        body.position.y = 14;
+        head.position.y = 22;
+        head.scale.set(0.9, 0.9, 0.9);
+        leftLeg.visible = false;
+        rightLeg.visible = false;
+        leftEye.position.y = 23;
+        rightEye.position.y = 23;
+        // Forgó pálcák
+        const rodGeo = new THREE.BoxGeometry(1, 8, 1);
+        const rodMat = new THREE.MeshBasicMaterial({ color: 0xFFAA00 });
+        for (let r = 0; r < 4; r++) {
+            const rod = new THREE.Mesh(rodGeo, rodMat);
+            const angle = (r / 4) * Math.PI * 2;
+            rod.position.set(Math.cos(angle) * 6, 10 + (r % 2) * 4, Math.sin(angle) * 6);
+            rod.rotation.z = 0.3;
+            group.add(rod);
+        }
+        // Tűz alul
+        const fireGeo = new THREE.BoxGeometry(3, 2, 3);
+        const fireMat = new THREE.MeshBasicMaterial({ color: 0xFF4400, transparent: true, opacity: 0.6 });
+        const fire = new THREE.Mesh(fireGeo, fireMat);
+        fire.position.set(0, 6, 0);
+        group.add(fire);
+    }
+
     return group;
 }
 
 function spawnMobs(count) {
     for (let i = 0; i < count; i++) {
-        const typeIndex = Math.floor(Math.random() * MOB_TYPES.length);
-        const type = MOB_TYPES[typeIndex];
+        // Dimenzió szűrés
+        const validTypes = MOB_TYPES.filter(t => {
+            if (currentDimension === 'nether') return t.dimension === 'nether';
+            if (currentDimension === 'end') return t.name === 'Enderman';
+            return !t.dimension; // overworld: csak dimenziótlan mobok
+        });
+        if (validTypes.length === 0) return;
+        const type = validTypes[Math.floor(Math.random() * validTypes.length)];
         const mesh = createMobMesh(type);
 
         const playerP = controls ? controls.getObject().position : new THREE.Vector3(0, 80, 0);
