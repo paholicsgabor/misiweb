@@ -11,7 +11,7 @@ let lastMobDamageTime = 0;
 // === CHUNK RENDSZER ===
 const BLOCK_SIZE = 20;
 const CHUNK_SIZE = 6;
-const RENDER_DIST = 3;
+const RENDER_DIST = 2;
 const chunks = {};
 let lastChunkX = null;
 let lastChunkZ = null;
@@ -154,6 +154,10 @@ const MOB_TYPES = [
     // Neutral
     { name: 'Wolf', bodyColor: 0xBDBDBD, headColor: 0xCFCFCF, eyeColor: 0x333333, speed: 22, hp: 4, damage: 2, behavior: 'neutral' },
     { name: 'Enderman', bodyColor: 0x1A1A2E, headColor: 0x16213E, eyeColor: 0xBB86FC, speed: 30, hp: 5, damage: 3, behavior: 'neutral' },
+    // Nether mobok
+    { name: 'Netherman', bodyColor: 0xFF3300, headColor: 0xFF6600, eyeColor: 0xFFFF00, speed: 28, hp: 8, damage: 3, behavior: 'hostile', dimension: 'nether' },
+    { name: 'Ghast', bodyColor: 0xEEEEEE, headColor: 0xFFFFFF, eyeColor: 0x880000, speed: 10, hp: 5, damage: 2, behavior: 'hostile', dimension: 'nether' },
+    { name: 'Blaze', bodyColor: 0xFFAA00, headColor: 0xFFCC00, eyeColor: 0xFF0000, speed: 18, hp: 6, damage: 2, behavior: 'hostile', dimension: 'nether' },
 ];
 
 let moveForward = false;
@@ -406,8 +410,8 @@ function animate() {
             checkFallDamage(groundY);
         }
 
-        // Portál detektálás
-        checkPortalCollision(playerPos);
+        // Portál detektálás (minden 10. frame)
+        if (Math.floor(time / 16) % 10 === 0) checkPortalCollision(playerPos);
 
         // Chunkok frissítése a játékos pozíciója alapján
         updateChunks(playerPos.x, playerPos.z);
@@ -484,8 +488,8 @@ function generateChunk(cx, cz) {
             const worldZ = cz * CHUNK_SIZE + bz;
             const height = getHeight(worldX, worldZ);
 
-            // Blokkok a magasság alapján (-8 mélységig = bánya)
-            const MINE_DEPTH = -8;
+            // Blokkok a magasság alapján (-4 mélységig = bánya)
+            const MINE_DEPTH = -4;
             for (let by = MINE_DEPTH; by <= Math.max(height, SEA_LEVEL); by++) {
                 let mat;
                 if (by > height && by <= SEA_LEVEL) {
@@ -556,9 +560,9 @@ function generateChunk(cx, cz) {
         }
     }
 
-    // Nether portál (lila, ritka)
+    // Nether portál (lila)
     const portalHash1 = simpleHash(cx * 11, cz * 23);
-    if (portalHash1 % 50 === 0) {
+    if (portalHash1 % 8 === 0) {
         const pX = (cx * CHUNK_SIZE + 3) * BLOCK_SIZE;
         const pH = getHeight(cx * CHUNK_SIZE + 3, cz * CHUNK_SIZE + 3);
         const pZ = (cz * CHUNK_SIZE + 3) * BLOCK_SIZE;
@@ -567,9 +571,9 @@ function generateChunk(cx, cz) {
         }
     }
 
-    // End portál (fekete, nagyon ritka)
+    // End portál (fekete)
     const portalHash2 = simpleHash(cx * 17, cz * 31);
-    if (portalHash2 % 80 === 0) {
+    if (portalHash2 % 12 === 0) {
         const pX = (cx * CHUNK_SIZE + 1) * BLOCK_SIZE;
         const pH = getHeight(cx * CHUNK_SIZE + 1, cz * CHUNK_SIZE + 1);
         const pZ = (cz * CHUNK_SIZE + 1) * BLOCK_SIZE;
@@ -636,6 +640,7 @@ function createPortal(group, x, y, z, type) {
                 box.userData.isPortal = type;
             }
             group.add(box);
+            objects.push(box);
         }
     }
 }
@@ -741,17 +746,19 @@ function generateEndChunk(cx, cz) {
 }
 
 let portalCooldown = 0;
+const _portalWorldPos = new THREE.Vector3();
 function checkPortalCollision(playerPos) {
     if (portalCooldown > 0) { portalCooldown--; return; }
 
     for (const obj of objects) {
         if (!obj.userData || !obj.userData.isPortal) continue;
-        const dx = Math.abs(playerPos.x - obj.position.x);
-        const dy = Math.abs(playerPos.y - obj.position.y);
-        const dz = Math.abs(playerPos.z - obj.position.z);
-        if (dx < BLOCK_SIZE && dy < BLOCK_SIZE * 2 && dz < BLOCK_SIZE) {
+        obj.getWorldPosition(_portalWorldPos);
+        const dx = Math.abs(playerPos.x - _portalWorldPos.x);
+        const dy = Math.abs(playerPos.y - _portalWorldPos.y);
+        const dz = Math.abs(playerPos.z - _portalWorldPos.z);
+        if (dx < BLOCK_SIZE * 2 && dy < BLOCK_SIZE * 3 && dz < BLOCK_SIZE * 2) {
             const portalType = obj.userData.isPortal;
-            portalCooldown = 60; // ne ugráljon oda-vissza
+            portalCooldown = 120;
             if (portalType === 'nether') {
                 switchDimension('nether');
             } else if (portalType === 'end') {
@@ -1324,32 +1331,80 @@ function updateMobs(delta) {
     }
 }
 
+function getToolBonus() {
+    const tool = TOOLBAR_BLOCKS[selectedSlot];
+    if (!tool) return { range: 60, breakRadius: 0, bulletLife: 2, bulletSpeed: 300, oreDrop: false };
+    const name = tool.name;
+    if (name === 'Csákány') return { range: 90, breakRadius: 0, bulletLife: 2, bulletSpeed: 300, oreDrop: true };
+    if (name === 'Kő Csákány') return { range: 100, breakRadius: 0, bulletLife: 2, bulletSpeed: 300, oreDrop: true };
+    if (name === 'Arany Csákány') return { range: 120, breakRadius: 0, bulletLife: 2, bulletSpeed: 300, oreDrop: true };
+    if (name === 'Fejsze') return { range: 80, breakRadius: 1, bulletLife: 2, bulletSpeed: 300, oreDrop: false };
+    if (name === 'Bot') return { range: 60, breakRadius: 0, bulletLife: 4, bulletSpeed: 450, oreDrop: false };
+    return { range: 60, breakRadius: 0, bulletLife: 2, bulletSpeed: 300, oreDrop: false };
+}
+
 function onMouseDown(event) {
     if (craftingOpen) return;
     if (!controls.isLocked || gameOver) return;
+
+    const bonus = getToolBonus();
 
     if (event.button === 0) {
         // Balklikk: blokk kiütés vagy lövés
         attackRaycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
         const intersects = attackRaycaster.intersectObjects(objects, false);
 
-        if (intersects.length > 0 && intersects[0].distance < 60) {
+        if (intersects.length > 0 && intersects[0].distance < bonus.range) {
+            const hitBlock = intersects[0].object;
+
+            // Érc drop ha csákányt használsz
+            if (bonus.oreDrop) checkOreDrop(hitBlock);
+
             breakBlock(intersects[0]);
+
+            // Fejsze: környező blokkok is törnek
+            if (bonus.breakRadius > 0) {
+                const center = hitBlock.position.clone();
+                for (let i = objects.length - 1; i >= 0; i--) {
+                    const obj = objects[i];
+                    const d = obj.position.distanceTo(center);
+                    if (d > 0 && d <= BLOCK_SIZE * bonus.breakRadius * 1.5) {
+                        if (bonus.oreDrop) checkOreDrop(obj);
+                        if (obj.parent) obj.parent.remove(obj);
+                        objects.splice(i, 1);
+                    }
+                }
+            }
         } else {
-            shootBullet();
+            shootBullet(bonus);
         }
     } else if (event.button === 2) {
         // Jobbklikk: blokk elhelyezés
         attackRaycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
         const intersects = attackRaycaster.intersectObjects(objects, false);
 
-        if (intersects.length > 0 && intersects[0].distance < 60) {
+        if (intersects.length > 0 && intersects[0].distance < bonus.range) {
             placeBlock(intersects[0]);
         }
     }
 }
 
-function shootBullet() {
+function checkOreDrop(block) {
+    const mat = block.material;
+    let drop = null;
+    if (mat === coalOreMat) drop = 'Szén';
+    else if (mat === ironOreMat) drop = 'Vas';
+    else if (mat === goldOreMat) drop = 'Arany érc';
+    else if (mat === diamondOreMat) drop = 'Gyémánt';
+    else if (mat === redstoneOreMat) drop = 'Redstone';
+    if (drop) {
+        inventory[drop] = (inventory[drop] || 0) + 1;
+        updateInventoryUI();
+    }
+}
+
+function shootBullet(bonus) {
+    if (!bonus) bonus = { bulletLife: 2, bulletSpeed: 300 };
     const bulletGeo = new THREE.SphereGeometry(1, 8, 8);
     const bulletMat = new THREE.MeshBasicMaterial({ color: 0xFFFF00 });
     const bullet = new THREE.Mesh(bulletGeo, bulletMat);
@@ -1357,7 +1412,7 @@ function shootBullet() {
     const dir = new THREE.Vector3();
     camera.getWorldDirection(dir);
     scene.add(bullet);
-    bullets.push({ mesh: bullet, direction: dir.clone(), speed: 300, life: 2 });
+    bullets.push({ mesh: bullet, direction: dir.clone(), speed: bonus.bulletSpeed, life: bonus.bulletLife });
 }
 
 function breakBlock(hit) {
@@ -1452,10 +1507,49 @@ function placeBlock(hit) {
     const dz = Math.abs(playerPos.z - pos.z);
     if (dx < BLOCK_SIZE && dy < BLOCK_SIZE * 1.5 && dz < BLOCK_SIZE) return;
 
+    const toolName = TOOLBAR_BLOCKS[selectedSlot] ? TOOLBAR_BLOCKS[selectedSlot].name : '';
+
+    // Szénabála: azonnal gyógyít 2 szívet (nem rak le blokkot)
+    if (toolName === 'Szénabála') {
+        if ((inventory['Szénabála'] || 0) > 0) {
+            inventory['Szénabála']--;
+            playerHP = Math.min(playerHP + 2, maxHP);
+            updateHeartsUI();
+            updateInventoryUI();
+        }
+        return;
+    }
+
+    // Kemence: lerakáskor beolvasztja a közelben bányászott érceket inventoryból
+    if (toolName === 'Kemence') {
+        const smeltMap = { 'Vas': 'Vas rúd', 'Arany érc': 'Arany rúd', 'Szén': 'Fáklya', 'Redstone': 'Redstone por' };
+        let smelted = false;
+        for (const [ore, result] of Object.entries(smeltMap)) {
+            const count = inventory[ore] || 0;
+            if (count > 0) {
+                inventory[ore] = 0;
+                inventory[result] = (inventory[result] || 0) + count;
+                smelted = true;
+            }
+        }
+        if (smelted) updateInventoryUI();
+    }
+
+    // Láda: lerakáskor megduplázza az összes nyersanyag inventoryt
+    if (toolName === 'Láda') {
+        const doubleItems = ['Szén', 'Vas', 'Arany érc', 'Gyémánt', 'Redstone', 'Vas rúd', 'Arany rúd'];
+        doubleItems.forEach(item => {
+            if ((inventory[item] || 0) > 0) {
+                inventory[item] *= 2;
+            }
+        });
+        updateInventoryUI();
+    }
+
     const box = new THREE.Mesh(boxGeometry, toolbarMaterials[selectedSlot]);
     box.position.copy(pos);
     // TNT jelölés
-    if (TOOLBAR_BLOCKS[selectedSlot] && TOOLBAR_BLOCKS[selectedSlot].name === 'TNT') {
+    if (toolName === 'TNT') {
         box.userData.isTNT = true;
     }
     scene.add(box);
