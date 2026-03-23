@@ -167,9 +167,16 @@ let moveRight = false;
 let canJump = false;
 
 let health = 20;
+let hunger = 20; // Éhség (0-20)
+let lastHungerDamage = 0;
 let gameOver = false;
 let lastGroundY = 10;
 let isFalling = false;
+
+// Napszak rendszer
+let gameTime = 0; // 0-1 (0=hajnal, 0.25=dél, 0.5=este, 0.75=éjfél, 1=hajnal)
+const dayDuration = 300000; // 5 perc = 1 teljes nap (ms)
+let sunLight, ambientLight;
 
 let prevTime = performance.now();
 const velocity = new THREE.Vector3();
@@ -186,10 +193,10 @@ function init() {
     scene.background = new THREE.Color(0x87CEEB);
     scene.fog = new THREE.Fog(0x87CEEB, 60, 350);
 
-    // Napfény
-    const ambientLight = new THREE.AmbientLight(0x666666);
+    // Napfény (dinamikus napszakhoz)
+    ambientLight = new THREE.AmbientLight(0x666666);
     scene.add(ambientLight);
-    const sunLight = new THREE.DirectionalLight(0xFFFFCC, 1.2);
+    sunLight = new THREE.DirectionalLight(0xFFFFCC, 1.2);
     sunLight.position.set(100, 200, 100);
     scene.add(sunLight);
     const hemiLight = new THREE.HemisphereLight(0x87CEEB, 0x556B2F, 0.6);
@@ -348,6 +355,7 @@ function init() {
     toolbarMaterials = TOOLBAR_BLOCKS.map(t => new THREE.MeshLambertMaterial({ color: t.color }));
     initToolbar();
     updateInventoryUI();
+    updateHungerBar();
 
     renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setPixelRatio(window.devicePixelRatio);
@@ -413,6 +421,23 @@ function animate() {
         // Portál detektálás (minden 10. frame)
         if (Math.floor(time / 16) % 10 === 0) checkPortalCollision(playerPos);
 
+        // Éhség rendszer: csökken idővel, éhezés sebez
+        if (time - lastHungerDamage > 5000) { // 5 másodpercenként
+            lastHungerDamage = time;
+            if (hunger > 0) {
+                hunger -= 1;
+                updateHungerBar();
+            }
+            if (hunger <= 0 && health > 0) {
+                takeDamage(1); // Éhezés sebzés
+            }
+        }
+
+        // Napszak rendszer: idő telik, nap/éjszaka váltakozik
+        gameTime += delta / (dayDuration / 1000); // delta másodpercben
+        if (gameTime >= 1) gameTime -= 1; // 0-1 között marad
+        updateDayNightCycle();
+
         // Chunkok frissítése a játékos pozíciója alapján
         updateChunks(playerPos.x, playerPos.z);
 
@@ -461,11 +486,92 @@ function updateHealthBar() {
     heartsEl.innerHTML = html;
 }
 
+function updateHungerBar() {
+    const hungerEl = document.getElementById('hunger-icons');
+    if (!hungerEl) return;
+    let html = '';
+    for (let i = 0; i < 10; i++) {
+        const drumstick = '🍗';
+        if (i * 2 < hunger) {
+            html += '<span class="hunger-icon full">' + drumstick + '</span>';
+        } else {
+            html += '<span class="hunger-icon empty">' + drumstick + '</span>';
+        }
+    }
+    hungerEl.innerHTML = html;
+}
+
 function flashDamage() {
     const overlay = document.getElementById('damage-overlay');
     if (!overlay) return;
     overlay.style.opacity = '0.5';
     setTimeout(() => { overlay.style.opacity = '0'; }, 300);
+}
+
+function updateDayNightCycle() {
+    // gameTime: 0=hajnal, 0.25=dél, 0.5=napnyugta, 0.75=éjfél, 1=hajnal
+    const t = gameTime;
+
+    let skyColor, fogColor, sunIntensity, ambientColor;
+
+    if (t < 0.25) {
+        // Hajnal → Dél (0-0.25)
+        const f = t / 0.25;
+        skyColor = lerpColor(0x4A5568, 0x87CEEB, f); // sötétkék → világoskék
+        fogColor = skyColor;
+        sunIntensity = 0.5 + f * 0.7;
+        ambientColor = lerpColor(0x333344, 0x666666, f);
+    } else if (t < 0.5) {
+        // Dél → Napnyugta (0.25-0.5)
+        const f = (t - 0.25) / 0.25;
+        skyColor = lerpColor(0x87CEEB, 0xFF6B35, f); // világoskék → narancs
+        fogColor = skyColor;
+        sunIntensity = 1.2 - f * 0.4;
+        ambientColor = lerpColor(0x666666, 0x664422, f);
+    } else if (t < 0.75) {
+        // Napnyugta → Éjfél (0.5-0.75)
+        const f = (t - 0.5) / 0.25;
+        skyColor = lerpColor(0xFF6B35, 0x0A0A1A, f); // narancs → sötét
+        fogColor = skyColor;
+        sunIntensity = 0.8 - f * 0.6;
+        ambientColor = lerpColor(0x664422, 0x222233, f);
+    } else {
+        // Éjfél → Hajnal (0.75-1)
+        const f = (t - 0.75) / 0.25;
+        skyColor = lerpColor(0x0A0A1A, 0x4A5568, f); // sötét → sötétkék
+        fogColor = skyColor;
+        sunIntensity = 0.2 + f * 0.3;
+        ambientColor = lerpColor(0x222233, 0x333344, f);
+    }
+
+    // Csak overworld-ben változik a napszak
+    if (currentDimension === 'overworld') {
+        scene.background.setHex(skyColor);
+        scene.fog.color.setHex(fogColor);
+        sunLight.intensity = sunIntensity;
+        ambientLight.color.setHex(ambientColor);
+
+        // Nap pozíció (körív az égen)
+        const angle = t * Math.PI * 2 - Math.PI / 2; // -90° = hajnal
+        sunLight.position.set(
+            Math.cos(angle) * 200,
+            Math.sin(angle) * 200,
+            100
+        );
+    }
+}
+
+function lerpColor(c1, c2, t) {
+    const r1 = (c1 >> 16) & 0xFF;
+    const g1 = (c1 >> 8) & 0xFF;
+    const b1 = c1 & 0xFF;
+    const r2 = (c2 >> 16) & 0xFF;
+    const g2 = (c2 >> 8) & 0xFF;
+    const b2 = c2 & 0xFF;
+    const r = Math.floor(r1 + (r2 - r1) * t);
+    const g = Math.floor(g1 + (g2 - g1) * t);
+    const b = Math.floor(b1 + (b2 - b1) * t);
+    return (r << 16) | (g << 8) | b;
 }
 
 // === CHUNK RENDSZER FÜGGVÉNYEK ===
@@ -1612,20 +1718,37 @@ function placeBlock(hit) {
 
     const toolName = TOOLBAR_BLOCKS[selectedSlot] ? TOOLBAR_BLOCKS[selectedSlot].name : '';
 
-    // Szénabála: azonnal gyógyít 2 szívet (nem rak le blokkot)
-    if (toolName === 'Szénabála') {
-        if ((inventory['Szénabála'] || 0) > 0) {
-            inventory['Szénabála']--;
-            playerHP = Math.min(playerHP + 2, maxHP);
-            updateHeartsUI();
+    // Étel fogyasztás
+    const foodItems = {
+        'Szénabála': { hunger: 6, health: 2 },
+        'Kenyér': { hunger: 5, health: 0 },
+        'Sült hús': { hunger: 8, health: 1 },
+        'Alma': { hunger: 4, health: 0 }
+    };
+
+    if (foodItems[toolName]) {
+        if ((inventory[toolName] || 0) > 0) {
+            inventory[toolName]--;
+            hunger = Math.min(hunger + foodItems[toolName].hunger, 20);
+            if (foodItems[toolName].health > 0) {
+                health = Math.min(health + foodItems[toolName].health, 20);
+                updateHealthBar();
+            }
+            updateHungerBar();
             updateInventoryUI();
         }
         return;
     }
 
-    // Kemence: lerakáskor beolvasztja a közelben bányászott érceket inventoryból
+    // Kemence: lerakáskor beolvasztja a közelben bányászott érceket és húst inventoryból
     if (toolName === 'Kemence') {
-        const smeltMap = { 'Vas': 'Vas rúd', 'Arany érc': 'Arany rúd', 'Szén': 'Fáklya', 'Redstone': 'Redstone por' };
+        const smeltMap = {
+            'Vas': 'Vas rúd',
+            'Arany érc': 'Arany rúd',
+            'Szén': 'Fáklya',
+            'Redstone': 'Redstone por',
+            'Nyers hús': 'Sült hús'
+        };
         let smelted = false;
         for (const [ore, result] of Object.entries(smeltMap)) {
             const count = inventory[ore] || 0;
@@ -1717,7 +1840,11 @@ function updateBullets(delta) {
 
                 if (mob.hp <= 0) {
                     // Mob drop!
-                    const dropName = mob.type.name;
+                    let dropName = mob.type.name;
+                    // Állatok húst adnak
+                    if (dropName === 'Cow' || dropName === 'Pig' || dropName === 'Chicken') {
+                        dropName = 'Nyers hús';
+                    }
                     inventory[dropName] = (inventory[dropName] || 0) + 1;
                     updateInventoryUI();
                     scene.remove(mob.mesh);
@@ -1801,6 +1928,9 @@ const GRID_RECIPES = [
     { pattern: ['Kő', 'Kő', 'Kő', null, 'Fa', null, null, 'Fa', null], result: 'Kő Csákány', resultCount: 1, icon: '⛏️' },
     { pattern: ['Fa', 'Fa', null, 'Fa', 'Fa', null, null, null, null], result: 'Barkácsasztal', resultCount: 1, icon: '🔨' },
     { pattern: ['Fű', 'Fű', 'Fű', 'Fű', 'Fű', 'Fű', 'Fű', 'Fű', 'Fű'], result: 'Szénabála', resultCount: 1, icon: '🌾' },
+    // Étel receptek
+    { pattern: ['Fű', 'Fű', 'Fű', null, null, null, null, null, null], result: 'Kenyér', resultCount: 3, icon: '🍞' },
+    { pattern: ['Levél', 'Levél', null, null, null, null, null, null, null], result: 'Alma', resultCount: 2, icon: '🍎' },
 ];
 
 function renderCraftingUI() {
